@@ -8,7 +8,7 @@ import './Dashboard.css';
 import Overview from './dashboard/Overview2.jsx';
 import Projects from './dashboard/Projects';
 import Tasks from './dashboard/Tasks';
-import TimeTracking from './dashboard/TimeTracking.jsx';
+import TimeTracking from './dashboard/TimeTracking';
 import Team from './dashboard/Team';
 import Reports from './dashboard/Reports';
 import Settings from './dashboard/Settings';

@@ -22,6 +22,37 @@ const Billing = ({ user, tenant, usage }) => {
     setDeleteConfirmation('');
 };
 
+useEffect(() => {
+    const fetchCurrentTenant = async () => {
+        try {
+            const tenantData = await ApiService.getCurrentTenant();
+            // Update current plan based on the fetched tenant data
+            if (tenantData && plans.length > 0) {
+                const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
+                if (currentPlanFromApi) {
+                    setCurrentPlan(currentPlanFromApi);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch current tenant:', error);
+        }
+    };
+    
+    if (showUpgradeModal || plans.length > 0) {
+        fetchCurrentTenant();
+    }
+}, [plans, showUpgradeModal]);
+
+
+useEffect(() => {
+    if (tenant?.plan && plans.length > 0) {
+        const planFromTenant = plans.find(p => p.id === tenant.plan);
+        if (planFromTenant && planFromTenant.id !== currentPlan?.id) {
+            setCurrentPlan(planFromTenant);
+        }
+    }
+}, [tenant, plans]);
+
      useEffect(() => {
         const handleClickOutside = (event) => {
             if (showUpgradeModal && 
@@ -57,53 +88,87 @@ const handleCloseUpgradeModal = () => {
 };
 
   
-    const loadBillingData = async () => {
-        try {
-            setLoading(true);
-            
-            // Load available plans
-            const plansData = await ApiService.getPlans();
-            if (Array.isArray(plansData)) {
-                setPlans(plansData);
-                
-                // Set current plan
-                const current = plansData.find(p => p.id === (tenant?.plan || 'free'));
-                setCurrentPlan(current);
-            }
-
-            // Load invoices
-            const invoicesData = await ApiService.getInvoices();
-            if (Array.isArray(invoicesData)) {
-                setInvoices(invoicesData);
-            }
-
-        } catch (error) {
-            console.error('Failed to load billing data:', error);
-             toast.error('Failed to load billing information');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleUpgradePlan = async (planId) => {
-        setUpgradingPlanId(planId);
+  const loadBillingData = async () => {
+    try {
         setLoading(true);
-        try {
-            toast.loading('Upgrading your plan...');
-            await ApiService.subscribe(planId, billingCycle);
-             setCurrentPlan(selectedPlan);
+        
+        // Load available plans
+        const plansData = await ApiService.getPlans();
+        if (Array.isArray(plansData)) {
+            setPlans(plansData);
             
-             toast.success('✅ Plan upgraded successfully!');
-            setShowUpgradeModal(false);
-            setSelectedPlan(null);
-            loadBillingData(); // Reload to get updated plan
-        } catch (error) {
-            console.error('Failed to upgrade plan:', error);
-             toast.error(error.message || 'Failed to upgrade plan. Please try again.');
-        } finally {
-            setLoading(false);
+            // Update current plan from API
+            await updateCurrentPlanFromApi();
         }
-    };
+
+        // Load invoices
+        const invoicesData = await ApiService.getInvoices();
+        if (Array.isArray(invoicesData)) {
+            setInvoices(invoicesData);
+        }
+
+    } catch (error) {
+        console.error('Failed to load billing data:', error);
+        toast.error('Failed to load billing information');
+    } finally {
+        setLoading(false);
+    }
+};
+const handleUpgradePlan = async (planId) => {
+    setUpgradingPlanId(planId);
+    setLoading(true);
+    try {
+        toast.loading('Upgrading your plan...');
+        const response = await ApiService.subscribe(planId, billingCycle);
+        
+        if (response && response.success) {
+            // Immediately update UI optimistically
+            setCurrentPlan(selectedPlan);
+            
+            // Fetch updated tenant data from API
+            const updatedTenantData = await ApiService.getCurrentTenant();
+            if (updatedTenantData && plans.length > 0) {
+                const updatedPlan = plans.find(p => p.id === updatedTenantData.plan);
+                setCurrentPlan(updatedPlan || selectedPlan);
+            }
+            
+            toast.success('✅ Plan upgraded successfully!', { duration: 4000 });
+            handleCloseUpgradeModal();
+            
+            // Reload all billing data to ensure consistency
+            setTimeout(() => {
+                loadBillingData();
+            }, 500);
+        }
+    } catch (error) {
+        console.error('Failed to upgrade plan:', error);
+        toast.error(error.message || 'Failed to upgrade plan. Please try again.');
+        // Revert optimistic update on error
+        const tenantData = await ApiService.getCurrentTenant();
+        if (tenantData && plans.length > 0) {
+            const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
+            setCurrentPlan(currentPlanFromApi);
+        }
+    } finally {
+        setLoading(false);
+        setUpgradingPlanId(null);
+    }
+};
+const updateCurrentPlanFromApi = async () => {
+    try {
+        const tenantData = await ApiService.getCurrentTenant();
+        if (tenantData && plans.length > 0) {
+            const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
+            if (currentPlanFromApi && currentPlanFromApi.id !== currentPlan?.id) {
+                setCurrentPlan(currentPlanFromApi);
+                return true; // Plan was updated
+            }
+        }
+    } catch (error) {
+        console.error('Failed to update current plan from API:', error);
+    }
+    return false; // Plan was not updated
+};
 
     const handleDowngradePlan = async (planId) => {
     const userConfirmed = await new Promise((resolve) => {
@@ -380,7 +445,8 @@ const handleCloseUpgradeModal = () => {
 
             <div className="plans-grid">
                 {plans.map(plan => {
-                    const isCurrent = plan.id === (currentPlan?.id || tenant?.plan);
+                    const isCurrent = plan.id === (currentPlan?.id || tenant?.plan) || 
+                  (selectedPlan && selectedPlan.id === plan.id && showUpgradeModal);
                     const price = billingCycle === 'monthly' ? plan.price : plan.yearly_price || plan.price * 12 * 0.8;
                     
                     return (
@@ -434,33 +500,33 @@ const handleCloseUpgradeModal = () => {
                             </div>
 
                             <div className="plan-actions">
-                                {isCurrent ? (
-                                    <button 
-                                        className="btn btn-secondary"
-                                        disabled
-                                    >
-                                        Current Plan
-                                    </button>
-                                ) : plan.id === 'free' ? (
-                                    <button 
-                                        className="btn btn-secondary"
-                                        onClick={() => handleDowngradePlan(plan.id)}
-                                    >
-                                        Downgrade to Free
-                                    </button>
-                                ) : (
-                                    <button 
-                                        className="btn btn-primary"
-                                        onClick={() => {
-                                            setSelectedPlan(plan);
-                                            setShowUpgradeModal(true);
-                                        }}
-                                        disabled={upgradingPlanId === plan.id || loading}
-                                    >
-                                         {upgradingPlanId === plan.id ? 'Upgrading...' : `Upgrade to ${plan.name}`}
-                                    </button>
-                                )}
-                            </div>
+    {isCurrent ? (
+        <button 
+            className="btn btn-secondary"
+            disabled
+        >
+            ✓ Current Plan
+        </button>
+    ) : plan.id === 'free' ? (
+        <button 
+            className="btn btn-secondary"
+            onClick={() => handleDowngradePlan(plan.id)}
+        >
+            Downgrade to Free
+        </button>
+    ) : (
+        <button 
+            className="btn btn-primary"
+            onClick={() => {
+                setSelectedPlan(plan);
+                setShowUpgradeModal(true);
+            }}
+            disabled={upgradingPlanId === plan.id || loading}
+        >
+            {upgradingPlanId === plan.id ? 'Upgrading...' : `Upgrade to ${plan.name}`}
+        </button>
+    )}
+</div>
                         </div>
                     );
                 })}
@@ -654,10 +720,7 @@ const handleCloseUpgradeModal = () => {
                                      <span style={{ color: '#333', fontWeight: '500' }}>New Plan:</span>
             <span style={{ color: '#000', fontWeight: '600' }}>{selectedPlan.name}</span>
                                 </div>
-                                <div className="summary-row">
-                                    <span>New Plan:</span>
-                                    <span>{selectedPlan.name}</span>
-                                </div>
+                               
                                 <div className="summary-row">
                                     <span>Billing Cycle:</span>
                                     <span>{billingCycle === 'monthly' ? 'Monthly' : 'Yearly'}</span>

@@ -66,3 +66,56 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+.modal * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+/* Custom Confirmation Toast */
+.confirm-toast {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    min-width: 300px;
+}
+
+.confirm-toast p {
+    margin: 0 0 16px 0;
+    font-weight: 500;
+    color: #1f2937;
+}
+
+.confirm-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.confirm-buttons button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid #d1d5db;
+    background: white;
+}
+
+.confirm-buttons button:first-child {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+.confirm-buttons button:first-child:hover {
+    background: #dc2626;
+}
+
+.confirm-buttons button:last-child {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.confirm-buttons button:last-child:hover {
+    background: #e5e7eb;
+}

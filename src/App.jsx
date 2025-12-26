@@ -5,14 +5,39 @@ import ProtectedRoute from './components/ProtectedRoutes';
 import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
+import { Toaster } from 'react-hot-toast'
 // import './index.css';
 
-// Main App Component
+
 function App() {
     return (
         <Router>
             <AuthProvider>
                 <div className="App">
+                      <Toaster 
+                        position="top-right"
+                        toastOptions={{
+                            duration: 3000,
+                            style: {
+                                background: '#363636',
+                                color: '#fff',
+                            },
+                            success: {
+                                duration: 3000,
+                                iconTheme: {
+                                    primary: '#10B981',
+                                    secondary: '#fff',
+                                },
+                            },
+                            error: {
+                                duration: 4000,
+                                iconTheme: {
+                                    primary: '#EF4444',
+                                    secondary: '#fff',
+                                },
+                            },
+                        }}
+                    />
                     <Routes>
                         {/* Public Routes */}
                         <Route path="/login" element={

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../services/auth.js';
+import toast from 'react-hot-toast';
 import './Dashboard.css';
 
 // Import sub-components
@@ -62,7 +63,9 @@ const Dashboard = () => {
                 if (error.message.includes('Session expired') || error.message.includes('401')) {
                     ApiService.clearTokens();
                     navigate('/login');
-                }
+                }else {
+        toast.error('Failed to load dashboard. Please try again.');
+    }
             } finally {
                 setLoading(false);
             }
@@ -89,12 +92,17 @@ const Dashboard = () => {
 
     const handleLogout = async () => {
         try {
+            toast.loading('Logging out...');
             await ApiService.logout();
+            toast.success('👋 Logged out successfully!');
         } catch (error) {
             console.error('Logout error:', error);
+            toast.error('Failed to logout properly');
         } finally {
             ApiService.clearTokens();
+            setTimeout(() => {
             navigate('/login');
+        }, 1000);
         }
     };
 
@@ -105,8 +113,13 @@ const Dashboard = () => {
                 prev.map(n => n.id === notificationId ? { ...n, is_read: true, read_at: new Date() } : n)
             );
             setUnreadCount(prev => Math.max(0, prev - 1));
+            toast.success('Notification marked as read', {
+            duration: 2000,
+            position: 'bottom-right'
+        });
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
+            toast.error('Failed to mark notification as read');
         }
     };
 
@@ -185,57 +198,120 @@ const Dashboard = () => {
                 <nav className="sidebar-nav">
                     <ul>
                         <li className={activeMenu === 'overview' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('overview')}>
+                            <button onClick={() =>{
+
+                                handleMenuChange('overview')
+                                 toast.loading('Loading overview...', { 
+        duration: 500,
+        position: 'top-right'
+    });
+                                
+                            }}>
+                            
+                             
+                                
                                 <span className="nav-icon">📊</span>
                                 <span>Overview</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'projects' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('projects')}>
+                            <button onClick={() => {
+
+                                handleMenuChange('projects')
+                                 toast.loading('Loading projects...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                                }}>
+                            
                                 <span className="nav-icon">📁</span>
                                 <span>Projects</span>
                                 {/* <span className="badge">{usage?.current?.projects || 0}/{usage?.limits?.projects || 3}</span> */}
                             </button>
                         </li>
                         <li className={activeMenu === 'tasks' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('tasks')}>
+                            <button onClick={() => {
+                                handleMenuChange('tasks')
+                                 toast.loading('Loading tasks...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">✅</span>
                                 <span>Tasks</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'time' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('time')}>
+                            <button onClick={() => {
+                                handleMenuChange('time')
+                                 toast.loading('Loading time...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">⏱️</span>
                                 <span>Time Tracking</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'team' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('team')}>
+                            <button onClick={() => {
+                                handleMenuChange('team')
+                                 toast.loading('Loading team...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">👥</span>
                                 <span>Team</span>
                                 {/* <span className="badge">{usage?.current?.users || 0}/{usage?.limits?.users || 5}</span> */}
                             </button>
                         </li>
                         <li className={activeMenu === 'reports' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('reports')}>
+                            <button onClick={() => {
+                                handleMenuChange('reports')
+                                 toast.loading('Loading reports...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">📈</span>
                                 <span>Reports</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'organization' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('organization')}>
+                            <button onClick={() => {
+                                handleMenuChange('organization')
+                                 toast.loading('Loading organization...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">🏢</span>
                                 <span>Organization</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'billing' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('billing')}>
+                            <button onClick={() => {
+                                handleMenuChange('billing')
+                                 toast.loading('Loading billing...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                            }}>
                                 <span className="nav-icon">💰</span>
                                 <span>Billing</span>
                             </button>
                         </li>
                         <li className={activeMenu === 'settings' ? 'active' : ''}>
-                            <button onClick={() => handleMenuChange('settings')}>
+                            <button onClick={() =>{
+
+                                handleMenuChange('settings')
+                                 toast.loading('Loading settings...', { 
+        duration: 300,
+        position: 'top-right'
+    });
+                                }}>
+                        
                                 <span className="nav-icon">⚙️</span>
                                 <span>Settings</span>
                             </button>
@@ -294,6 +370,11 @@ const Dashboard = () => {
                                                             prev.map(n => ({ ...n, is_read: true }))
                                                         );
                                                         setUnreadCount(0);
+                                                        toast.success(`Marked ${unreadIds.length} notification(s) as read`, {
+            duration: 2000
+        });
+                                                    }else{
+                                                         toast.info('No unread notifications');
                                                     }
                                                 }}
                                             >

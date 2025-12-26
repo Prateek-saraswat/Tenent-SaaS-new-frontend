@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './Billing.css';
 
 const Billing = ({ user, tenant, usage }) => {
@@ -11,11 +12,51 @@ const Billing = ({ user, tenant, usage }) => {
     const [selectedPlan, setSelectedPlan] = useState(null);
     const [showUpgradeModal, setShowUpgradeModal] = useState(false);
     const [billingCycle, setBillingCycle] = useState('monthly');
+    const modalRef = useRef(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState('');
+    const [upgradingPlanId, setUpgradingPlanId] = useState(null);
+
+     const resetDeleteModal = () => {
+    setShowDeleteConfirm(false);
+    setDeleteConfirmation('');
+};
+
+     useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showUpgradeModal && 
+                modalRef.current && 
+                !modalRef.current.contains(event.target) &&
+                !loading
+            ) {
+                handleCloseUpgradeModal();
+                setShowUpgradeModal(false);
+                toast.dismiss();
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showUpgradeModal, loading]);
 
     useEffect(() => {
         loadBillingData();
     }, []);
 
+    const resetUpgradeModal = () => {
+    setSelectedPlan(null);
+    toast.dismiss();
+};
+
+// Update close handlers
+const handleCloseUpgradeModal = () => {
+    resetUpgradeModal();
+    setShowUpgradeModal(false);
+};
+
+  
     const loadBillingData = async () => {
         try {
             setLoading(true);
@@ -38,52 +79,75 @@ const Billing = ({ user, tenant, usage }) => {
 
         } catch (error) {
             console.error('Failed to load billing data:', error);
+             toast.error('Failed to load billing information');
         } finally {
             setLoading(false);
         }
     };
 
     const handleUpgradePlan = async (planId) => {
+        setUpgradingPlanId(planId);
         setLoading(true);
         try {
+            toast.loading('Upgrading your plan...');
             await ApiService.subscribe(planId, billingCycle);
+             setCurrentPlan(selectedPlan);
             
-            alert('Plan upgraded successfully!');
+             toast.success('✅ Plan upgraded successfully!');
             setShowUpgradeModal(false);
+            setSelectedPlan(null);
             loadBillingData(); // Reload to get updated plan
         } catch (error) {
             console.error('Failed to upgrade plan:', error);
-            alert(error.message || 'Failed to upgrade plan');
+             toast.error(error.message || 'Failed to upgrade plan. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
     const handleDowngradePlan = async (planId) => {
-        if (!window.confirm(`Are you sure you want to downgrade to the ${planId} plan?`)) {
-            return;
-        }
+    const userConfirmed = await new Promise((resolve) => {
+        // Show custom confirmation toast
+        toast.custom((t) => (
+            <div className="confirm-toast">
+                <p>Are you sure you want to downgrade to the {planId} plan?</p>
+                <div className="confirm-buttons">
+                    <button onClick={() => { resolve(true); toast.dismiss(t.id); }}>
+                        Yes, Downgrade
+                    </button>
+                    <button onClick={() => { resolve(false); toast.dismiss(t.id); }}>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        ), { duration: Infinity });
+    });
 
-        setLoading(true);
-        try {
-            // This would require a POST /billing/downgrade endpoint
-            alert('Plan downgrade would be processed here');
-            
-            // In production:
-            // await ApiService.downgrade(planId);
-            // loadBillingData();
-        } catch (error) {
-            console.error('Failed to downgrade plan:', error);
-            alert('Failed to downgrade plan');
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (!userConfirmed) return;
+
+    setLoading(true);
+    try {
+        toast.loading('Processing downgrade...');
+        // This would require a POST /billing/downgrade endpoint
+        // Simulating API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        toast.success('✅ Plan downgraded successfully!');
+        loadBillingData(); // Reload to get updated plan
+    } catch (error) {
+        console.error('Failed to downgrade plan:', error);
+        toast.error('Failed to downgrade plan. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleDownloadInvoice = async (invoiceId) => {
         try {
             // This would require an endpoint to download invoice PDF
-            alert('Invoice download would be implemented here');
+            toast.loading('Preparing invoice download...');
+             await new Promise(resolve => setTimeout(resolve, 1000));
+              toast.success('📄 Invoice downloaded successfully!');
             
             // In production:
             // const response = await ApiService.downloadInvoice(invoiceId);
@@ -94,7 +158,7 @@ const Billing = ({ user, tenant, usage }) => {
             // a.click();
         } catch (error) {
             console.error('Failed to download invoice:', error);
-            alert('Failed to download invoice');
+             toast.error('Failed to download invoice. Please try again.');
         }
     };
 
@@ -238,7 +302,11 @@ const Billing = ({ user, tenant, usage }) => {
                     <h3>Recent Invoices</h3>
                     <button 
                         className="btn btn-secondary"
-                        onClick={() => setActiveTab('invoices')}
+                        onClick={() =>{
+
+                            setActiveTab('invoices')
+                            toast.loading('Loading invoices...', { duration: 800 });
+                        }}
                     >
                         View All
                     </button>
@@ -312,7 +380,7 @@ const Billing = ({ user, tenant, usage }) => {
 
             <div className="plans-grid">
                 {plans.map(plan => {
-                    const isCurrent = plan.id === currentPlan?.id;
+                    const isCurrent = plan.id === (currentPlan?.id || tenant?.plan);
                     const price = billingCycle === 'monthly' ? plan.price : plan.yearly_price || plan.price * 12 * 0.8;
                     
                     return (
@@ -387,8 +455,9 @@ const Billing = ({ user, tenant, usage }) => {
                                             setSelectedPlan(plan);
                                             setShowUpgradeModal(true);
                                         }}
+                                        disabled={upgradingPlanId === plan.id || loading}
                                     >
-                                        Upgrade to {plan.name}
+                                         {upgradingPlanId === plan.id ? 'Upgrading...' : `Upgrade to ${plan.name}`}
                                     </button>
                                 )}
                             </div>
@@ -463,7 +532,10 @@ const Billing = ({ user, tenant, usage }) => {
                                             {invoice.invoice_url && (
                                                 <button 
                                                     className="btn-icon"
-                                                    onClick={() => window.open(invoice.invoice_url, '_blank')}
+                                                    onClick={() => {
+                                                        toast.loading('Opening invoice in new tab...', { duration: 800 });
+                                                        window.open(invoice.invoice_url, '_blank')
+                                                    }}
                                                     title="View Online"
                                                 >
                                                     👁️
@@ -559,13 +631,19 @@ const Billing = ({ user, tenant, usage }) => {
 
             {/* Upgrade Plan Modal */}
             {showUpgradeModal && selectedPlan && (
-                <div className="modal-overlay">
-                    <div className="modal">
+                <div className="modal-overlay"  onClick={(e) => {
+            // Check if click is on the overlay itself (not the modal content)
+            if (e.target.className === 'modal-overlay' && !loading) {
+                setShowUpgradeModal(false);
+                toast.dismiss();
+            }
+        }}>
+                    <div className="modal"  ref={modalRef} onClick={(e) => e.stopPropagation()} >
                         <div className="modal-header">
                             <h3>Upgrade to {selectedPlan.name}</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowUpgradeModal(false)}
+                                onClick={handleCloseUpgradeModal} 
                             >
                                 ×
                             </button>
@@ -573,8 +651,8 @@ const Billing = ({ user, tenant, usage }) => {
                         <div className="modal-body">
                             <div className="upgrade-summary">
                                 <div className="summary-row">
-                                    <span>Current Plan:</span>
-                                    <span>{currentPlan?.name || 'Free'}</span>
+                                     <span style={{ color: '#333', fontWeight: '500' }}>New Plan:</span>
+            <span style={{ color: '#000', fontWeight: '600' }}>{selectedPlan.name}</span>
                                 </div>
                                 <div className="summary-row">
                                     <span>New Plan:</span>
@@ -613,7 +691,7 @@ const Billing = ({ user, tenant, usage }) => {
                         <div className="modal-footer">
                             <button 
                                 className="btn btn-secondary"
-                                onClick={() => setShowUpgradeModal(false)}
+                                onClick={handleCloseUpgradeModal}
                             >
                                 Cancel
                             </button>

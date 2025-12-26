@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast'; 
 import './Register.css';
 
 const Register = () => {
@@ -31,8 +32,16 @@ const Register = () => {
 
     // Clear auth error when component mounts
     useEffect(() => {
+        if (authError) {
+        toast.error(authError, {
+            duration: 4000,
+            position: 'top-right'
+        });
         clearError();
-    }, [clearError]);
+    } else {
+        clearError();
+    }
+    }, [authError ,clearError]);
 
     // Calculate password strength
     useEffect(() => {
@@ -131,24 +140,46 @@ const Register = () => {
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             setIsSubmitting(false);
+            const firstErrorKey = Object.keys(validationErrors)[0];
+        toast.error(validationErrors[firstErrorKey]);
             return;
         }
 
         clearError();
+        const toastId = toast.loading('Creating your account...');
         
-        const result = await register({
+        try {
+
+              const result = await register({
             email: formData.email,
             password: formData.password,
             firstName: formData.firstName,
             lastName: formData.lastName,
             organizationName: formData.organizationName
         });
-
         if (result.success) {
-            navigate('/dashboard', { replace: true });
+             toast.success('✅ Account created successfully! Welcome to ProjectFlow', { 
+                id: toastId,
+                duration: 3000
+            });
+            // Small delay to show success message
+            setTimeout(() => {
+                navigate('/dashboard', { replace: true });
+            }, 1500);
+        }else {
+             toast.dismiss(toastId);
         }
+
+        }catch (error){
+ toast.dismiss(toastId);
+        toast.error('An unexpected error occurred. Please try again.');
+        }finally{
+
+            setIsSubmitting(false);
+        }
+      
         
-        setIsSubmitting(false);
+        
     };
 
     return (
@@ -164,11 +195,11 @@ const Register = () => {
                     </p>
                 </div>
 
-                {authError && (
+                {/* {authError && (
                     <div className="alert alert-error">
                         {authError}
                     </div>
-                )}
+                )} */}
 
                 <form onSubmit={handleSubmit} className="register-form" noValidate>
                     {/* Personal Information */}
@@ -334,15 +365,16 @@ const Register = () => {
 
                     {/* Terms and Preferences */}
                     <div className="form-section">
-                        <div className={`form-check ${errors.agreeTerms ? 'error' : ''}`}>
+                        <div className={'form-check'}>
                             <input
                                 type="checkbox"
                                 id="agreeTerms"
                                 name="agreeTerms"
                                 checked={formData.agreeTerms}
                                 onChange={handleChange}
-                                className="form-check-input"
+                                
                                 disabled={isSubmitting}
+                                className={`form-check-input ${errors.agreeTerms ? 'error' : ''}`}
                             />
                             <label htmlFor="agreeTerms" className="form-check-label">
                                 I agree to the{' '}

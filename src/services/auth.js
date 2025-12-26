@@ -44,6 +44,24 @@ class ApiService {
         return this.apiCall('/auth/me', 'GET');
     }
 
+    static async getUserProfile(userId = null) {
+    if (userId) {
+        return this.apiCall(`/users/${userId}`, 'GET');
+    }
+    return this.apiCall('/auth/me', 'GET');
+}
+
+static async updateUserProfile(userId, data) {
+    return this.apiCall(`/users/${userId}`, 'PUT', data);
+}
+
+static async changePassword(currentPassword, newPassword) {
+    return this.apiCall('/auth/change-password', 'POST', {
+        currentPassword,
+        newPassword
+    });
+}
+
     // Tenant/Organization methods
     static async getCurrentTenant() {
         return this.apiCall('/tenants/current', 'GET');

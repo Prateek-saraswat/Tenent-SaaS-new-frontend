@@ -892,3 +892,71 @@
         padding: 8px;
     }
 }
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    cursor: pointer; /* Indicates it's clickable */
+}
+
+.modal {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    cursor: default; /* Reset cursor for modal content */
+}
+.summary-row span {
+    color: #333;
+}
+
+.summary-row span:last-child {
+    color: #000;
+    font-weight: 600;
+}
+
+/* Make sure summary text is visible */
+.upgrade-summary .summary-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.upgrade-summary .summary-row span {
+    color: #333;
+    font-size: 14px;
+}
+
+.upgrade-summary .summary-row span:last-child {
+    color: #000;
+    font-weight: 600;
+}
+
+.upgrade-summary .summary-row.total span {
+    font-size: 16px;
+    font-weight: 600;
+    color: #000;
+}
+
+/* Ensure modal text is visible */
+.modal-body h4 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.modal-body ul li {
+    color: #333;
+    margin-bottom: 8px;
+}

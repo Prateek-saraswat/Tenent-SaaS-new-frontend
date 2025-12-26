@@ -1,7 +1,8 @@
 // components/dashboard/Projects.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './Projects.css';
 
 const Projects = ({ user, tenant }) => {
@@ -12,6 +13,15 @@ const Projects = ({ user, tenant }) => {
     const [selectedProject, setSelectedProject] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [isSubmitting, setIsSubmitting] = useState(false); // 1. change p
+    const [formErrors, setFormErrors] = useState({}); //2.change
+    const [archiveLoading, setArchiveLoading] = useState(false); 
+    const [showProjectDetails, setShowProjectDetails] = useState(false);
+const [projectDetails, setProjectDetails] = useState(null);
+const [projectDetailsLoading, setProjectDetailsLoading] = useState(false);
+const projectDetailsModalRef = useRef(null);
+      const createModalRef = useRef(null);
+    const archiveModalRef = useRef(null);
     
     // Form state
 
@@ -25,10 +35,89 @@ const Projects = ({ user, tenant }) => {
         budget: '',
         color: '#3B82F6'
     });
+    useEffect(() => {
+    const handleClickOutside = (event) => {
+        // For create modal
+        if (showCreateModal && 
+            createModalRef.current && 
+            !createModalRef.current.contains(event.target) &&
+            !isSubmitting
+        ) {
+            resetCreateProjectModal();
+        }
+        
+        // For archive modal
+        if (showArchiveModal && 
+            archiveModalRef.current && 
+            !archiveModalRef.current.contains(event.target) &&
+            !archiveLoading
+        ) {
+            resetArchiveProjectModal();
+        }
+        
+        // Add this for project details modal
+        if (showProjectDetails && 
+            projectDetailsModalRef.current && 
+            !projectDetailsModalRef.current.contains(event.target)
+        ) {
+            resetProjectDetailsModal();
+        }
+    };
 
+    if (showCreateModal || showArchiveModal || showProjectDetails) {
+        document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+    };
+}, [showCreateModal, showArchiveModal, showProjectDetails, isSubmitting, archiveLoading]);
     useEffect(() => {
         loadProjects();
     }, [statusFilter, searchTerm]);
+
+    const resetCreateProjectModal = () => {
+    setShowCreateModal(false);
+    setIsSubmitting(false);
+    setFormErrors({});
+    setProjectForm({
+        name: '',
+        description: '',
+        code: '',
+        startDate: '',
+        endDate: '',
+        budget: '',
+        color: '#3B82F6'
+    });
+};
+const resetProjectDetailsModal = () => {
+    setShowProjectDetails(false);
+    setProjectDetails(null);
+    setProjectDetailsLoading(false);
+};
+
+const resetArchiveProjectModal = () => {
+    setShowArchiveModal(false);
+    setSelectedProject(null);
+    setArchiveLoading(false);
+};
+
+// Add this function after other handler functions
+const handleViewProjectDetails = async (projectId) => {
+    try {
+        setProjectDetailsLoading(true);
+        // Fetch project details from API
+        const data = await ApiService.getProject(projectId);
+        setProjectDetails(data);
+        setShowProjectDetails(true);
+        toast.success('Project details loaded!');
+    } catch (error) {
+        console.error('Failed to load project details:', error);
+        toast.error(error.message || 'Failed to load project details');
+    } finally {
+        setProjectDetailsLoading(false);
+    }
+};
 
     const loadProjects = async () => {
         try {
@@ -43,43 +132,77 @@ const Projects = ({ user, tenant }) => {
             }
         } catch (error) {
             console.error('Failed to load projects:', error);
+            toast.error('Failed to load projects');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleCreateProject = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await ApiService.createProject(projectForm);
-            if (response && response.projectId) {
-                setShowCreateModal(false);
-                setProjectForm({
-                    name: '',
-                    description: '',
-                    code: '',
-                    startDate: '',
-                    endDate: '',
-                    budget: '',
-                    color: '#3B82F6'
-                });
-                loadProjects();
-            }
-        } catch (error) {
-            console.error('Failed to create project:', error);
+    const validateDates = (start, end) => {
+    if (start && end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        if (endDate < startDate) {
+            return "End date cannot be before start date";
         }
-    };
+    }
+    return "";
+};
+
+    const handleCreateProject = async (e) => {
+        const dateError = validateDates(projectForm.startDate, projectForm.endDate);
+if (dateError) {
+    setFormErrors({ ...formErrors, date: dateError });
+    setIsSubmitting(false);
+    toast.error(dateError);
+    return;
+}
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+        const response = await ApiService.createProject(projectForm);
+        if (response && response.projectId) {
+            toast.success('Project created successfully!');
+            resetCreateProjectModal();
+            setProjectForm({
+                name: '',
+                description: '',
+                code: '',
+                startDate: '',
+                endDate: '',
+                budget: '',
+                color: '#3B82F6'
+            });
+            loadProjects();
+        }
+    } catch (error) {
+        console.error('Failed to create project:', error);
+        toast.error(error.message || 'Failed to create project');
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const handleArchiveProject = async () => {
         if (!selectedProject) return;
+         setArchiveLoading(true)
         
         try {
             await ApiService.archiveProject(selectedProject.id);
-            setShowArchiveModal(false);
-            setSelectedProject(null);
+             toast.success(`"${selectedProject.name}" has been archived successfully!`);
+
+            resetArchiveProjectModal(); 
             loadProjects();
         } catch (error) {
             console.error('Failed to archive project:', error);
+            toast.error(error.message || 'Failed to archive project'); 
+        }finally{
+             setArchiveLoading(false); 
         }
     };
 
@@ -130,7 +253,19 @@ const Projects = ({ user, tenant }) => {
                     </div>
                     <button 
                         className="btn btn-primary"
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() => {
+                            setProjectForm({
+            name: '',
+            description: '',
+            code: '',
+            startDate: '',
+            endDate: '',
+            budget: '',
+            color: '#3B82F6'
+        });
+        setFormErrors({});
+                            setShowCreateModal(true)
+                        }}
                     >
                         + New Project
                     </button>
@@ -180,16 +315,23 @@ const Projects = ({ user, tenant }) => {
                                 <div className="project-actions">
                                     <button 
                                         className="btn btn-secondary"
-                                        onClick={() => navigate(`/dashboard/projects/${project.id}`)}
+                                        onClick={() =>{
+                                             handleViewProjectDetails(project.id)
+                                        // navigate(`/dashboard/projects/${project.id}`)
+                                         toast(`Opening "${project.name}"...`, { // ADD THIS
+            icon: '🔍',
+            duration: 1000
+        });
+                                        }}
                                     >
                                         View Details
                                     </button>
                                     <button 
                                         className="btn btn-secondary"
-                                        onClick={() => {
-                                            setSelectedProject(project);
-                                            setShowArchiveModal(true);
-                                        }}
+                                       onClick={() => {
+        setSelectedProject(project);
+        setShowArchiveModal(true);
+    }}
                                     >
                                         Archive
                                     </button>
@@ -206,18 +348,24 @@ const Projects = ({ user, tenant }) => {
 
             {/* Create Project Modal */}
             {showCreateModal && (
-                <div className="modal-overlay">
-                    <div className="modal">
+                <div className="modal-overlay" onClick={(e) => {
+    if (e.target.className === 'modal-overlay' && !isSubmitting) {
+        resetCreateProjectModal();  // Add this
+    }
+}}>
+                    <div className="modal" ref={createModalRef}>
                         <div className="modal-header">
                             <h3>Create New Project</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowCreateModal(false)}
+                                onClick={resetCreateProjectModal}
                             >
                                 ×
                             </button>
                         </div>
-                        <form onSubmit={handleCreateProject}>
+                        <form onSubmit={handleCreateProject} onKeyDown={(e) => {
+    if (e.key === 'Enter') e.preventDefault(); //1.change Prevent enter key from submitting multiple times
+}}>
                             <div className="modal-body">
                                 <div className="form-group">
                                     <label>Project Name *</label>
@@ -258,6 +406,9 @@ const Projects = ({ user, tenant }) => {
                                         <label>Start Date</label>
                                         <input
                                             type="date"
+                                            className={formErrors.date ? 'error' : ''}
+                                            min={new Date().toISOString().split('T')[0]}
+                                            max={projectForm.endDate || ''}
                                             value={projectForm.startDate}
                                             onChange={(e) => setProjectForm({...projectForm, startDate: e.target.value})}
                                         />
@@ -265,9 +416,15 @@ const Projects = ({ user, tenant }) => {
                                     <div className="form-group">
                                         <label>End Date</label>
                                         <input
+                                        min={projectForm.startDate || new Date().toISOString().split('T')[0]}
+                                        className={formErrors.date ? 'error' : ''}
                                             type="date"
                                             value={projectForm.endDate}
-                                            onChange={(e) => setProjectForm({...projectForm, endDate: e.target.value})}
+                                            onChange={(e) => {
+                                                setFormErrors({...formErrors, date: ''})
+                                                setProjectForm({...projectForm, endDate: e.target.value})}
+                                                
+                                            }
                                         />
                                     </div>
                                 </div>
@@ -275,6 +432,7 @@ const Projects = ({ user, tenant }) => {
                                     <label>Budget ($)</label>
                                     <input
                                         type="number"
+
                                         value={projectForm.budget}
                                         onChange={(e) => setProjectForm({...projectForm, budget: e.target.value})}
                                     />
@@ -284,15 +442,17 @@ const Projects = ({ user, tenant }) => {
                                 <button 
                                     type="button"
                                     className="btn btn-secondary"
-                                    onClick={() => setShowCreateModal(false)}
+                                    onClick={resetCreateProjectModal}
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     type="submit"
                                     className="btn btn-primary"
+                                    disabled={isSubmitting || formErrors.date}
+
                                 >
-                                    Create Project
+                                   {isSubmitting ? 'Creating...' : 'Create Project'}
                                 </button>
                             </div>
                         </form>
@@ -302,13 +462,18 @@ const Projects = ({ user, tenant }) => {
 
             {/* Archive Project Modal */}
             {showArchiveModal && selectedProject && (
-                <div className="modal-overlay">
-                    <div className="modal">
+                <div className="modal-overlay" onClick={(e) => {
+    if (e.target.className === 'modal-overlay' && !archiveLoading) {
+        resetArchiveProjectModal();  // Add this
+    }
+}}>
+                    <div className="modal"   ref={archiveModalRef}>
                         <div className="modal-header">
                             <h3>Archive Project</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowArchiveModal(false)}
+                                onClick={resetArchiveProjectModal}
+                                  disabled={archiveLoading}
                             >
                                 ×
                             </button>
@@ -320,7 +485,8 @@ const Projects = ({ user, tenant }) => {
                         <div className="modal-footer">
                             <button 
                                 className="btn btn-secondary"
-                                onClick={() => setShowArchiveModal(false)}
+                                onClick={resetArchiveProjectModal}
+                                  disabled={archiveLoading}
                             >
                                 Cancel
                             </button>
@@ -328,12 +494,158 @@ const Projects = ({ user, tenant }) => {
                                 className="btn btn-warning"
                                 onClick={handleArchiveProject}
                             >
-                                Archive Project
+                                 {archiveLoading ? 'Archiving...' : 'Archive Project'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
+            {/* Project Details Modal */}
+{showProjectDetails && projectDetails && (
+    <div className="modal-overlay" onClick={(e) => {
+        if (e.target.className === 'modal-overlay') {
+            resetProjectDetailsModal();
+        }
+    }}>
+        <div className="modal large" ref={projectDetailsModalRef}>
+            <div className="modal-header">
+                <h3>Project Details</h3>
+                <button 
+                    className="close-btn"
+                    onClick={resetProjectDetailsModal}
+                >
+                    ×
+                </button>
+            </div>
+            <div className="modal-body">
+                {projectDetailsLoading ? (
+                    <div className="loading">Loading project details...</div>
+                ) : (
+                    <div className="project-details-content">
+                        <div className="project-details-header">
+                            <div 
+                                className="project-color-badge"
+                                style={{ backgroundColor: projectDetails.color }}
+                            ></div>
+                            <h2>{projectDetails.name}</h2>
+                            <span className={`project-status-badge ${projectDetails.status}`}>
+                                {projectDetails.status}
+                            </span>
+                        </div>
+                        
+                        <div className="project-details-grid">
+                            <div className="details-section">
+                                <h4>Basic Information</h4>
+                                <div className="details-row">
+                                    <span className="label">Project Code:</span>
+                                    <span className="value">{projectDetails.code || 'N/A'}</span>
+                                </div>
+                                <div className="details-row">
+                                    <span className="label">Description:</span>
+                                    <span className="value">{projectDetails.description || 'No description'}</span>
+                                </div>
+                                <div className="details-row">
+                                    <span className="label">Budget:</span>
+                                    <span className="value">
+                                        {projectDetails.budget ? `$${projectDetails.budget}` : 'Not set'}
+                                    </span>
+                                </div>
+                                <div className="details-row">
+                                    <span className="label">Created:</span>
+                                    <span className="value">
+                                        {projectDetails.created_at ? new Date(projectDetails.created_at).toLocaleDateString() : 'N/A'}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div className="details-section">
+                                <h4>Timeline</h4>
+                                <div className="details-row">
+                                    <span className="label">Start Date:</span>
+                                    <span className="value">
+                                        {projectDetails.startDate ? new Date(projectDetails.startDate).toLocaleDateString() : 'Not set'}
+                                    </span>
+                                </div>
+                                <div className="details-row">
+                                    <span className="label">End Date:</span>
+                                    <span className="value">
+                                        {projectDetails.endDate ? new Date(projectDetails.endDate).toLocaleDateString() : 'Not set'}
+                                    </span>
+                                </div>
+                                <div className="details-row">
+                                    <span className="label">Duration:</span>
+                                    <span className="value">
+                                        {projectDetails.startDate && projectDetails.endDate 
+                                            ? `${Math.ceil((new Date(projectDetails.endDate) - new Date(projectDetails.startDate)) / (1000 * 60 * 60 * 24))} days`
+                                            : 'N/A'
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div className="details-section">
+                                <h4>Statistics</h4>
+                                <div className="stats-grid">
+                                    <div className="stat-item">
+                                        <span className="stat-label">Total Tasks:</span>
+                                        <span className="stat-value">{projectDetails.task_count || 0}</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="stat-label">Completed:</span>
+                                        <span className="stat-value">
+                                            {projectDetails.completed_tasks || 0}
+                                        </span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="stat-label">Team Members:</span>
+                                        <span className="stat-value">
+                                            {projectDetails.member_count || 0}
+                                        </span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="stat-label">Hours Logged:</span>
+                                        <span className="stat-value">
+                                            {projectDetails.total_hours || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* Add more sections as needed */}
+                            <div className="details-section">
+                                <h4>Team Members</h4>
+                                {projectDetails.members && projectDetails.members.length > 0 ? (
+                                    <div className="team-members-list">
+                                        {projectDetails.members.map(member => (
+                                            <div key={member.id} className="team-member">
+                                                <div className="member-avatar">
+                                                    {member.first_name?.charAt(0)}{member.last_name?.charAt(0)}
+                                                </div>
+                                                <div className="member-info">
+                                                    <span className="member-name">
+                                                        {member.first_name} {member.last_name}
+                                                    </span>
+                                                    <span className="member-role">{member.role}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p>No team members assigned yet</p>
+                                )}
+                            </div>
+                        </div>
+                        
+                        <div className="project-actions-footer">
+                            
+                           
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    </div>
+)}
         </div>
     );
 };

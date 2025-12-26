@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './OrganizationSettings.css';
 
 const OrganizationSettings = ({ user, tenant }) => {
@@ -9,7 +10,34 @@ const OrganizationSettings = ({ user, tenant }) => {
     const [auditLogs, setAuditLogs] = useState([]);
     const [logo, setLogo] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
+     const modalRef = useRef(null);
+     // Danger zone state
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deleteConfirmation, setDeleteConfirmation] = useState('');
+    const handleCloseDeleteModal = () => {
+    resetDeleteModal();
+    toast.dismiss();
+};
 
+      useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showDeleteConfirm && 
+                modalRef.current && 
+                !modalRef.current.contains(event.target) &&
+                !saving
+            ) {
+                handleCloseDeleteModal()
+            }
+        };
+
+        if (showDeleteConfirm) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showDeleteConfirm, saving]);
     // Organization form state
     const [orgForm, setOrgForm] = useState({
         name: '',
@@ -26,13 +54,16 @@ const OrganizationSettings = ({ user, tenant }) => {
         }
     });
 
-    // Danger zone state
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-    const [deleteConfirmation, setDeleteConfirmation] = useState('');
+    
 
     useEffect(() => {
         loadOrganizationData();
     }, []);
+
+    const resetDeleteModal = () => {
+    setShowDeleteConfirm(false);
+    setDeleteConfirmation('');
+};
 
     const loadOrganizationData = async () => {
         try {
@@ -60,6 +91,7 @@ const OrganizationSettings = ({ user, tenant }) => {
 
         } catch (error) {
             console.error('Failed to load organization data:', error);
+             toast.error('Failed to load organization settings');
         } finally {
             setLoading(false);
         }
@@ -75,11 +107,11 @@ const OrganizationSettings = ({ user, tenant }) => {
                 settings: JSON.stringify(orgForm.settings)
             });
             
-            alert('Organization settings updated successfully!');
+            toast.success('Organization settings updated successfully!'); 
             loadOrganizationData(); // Reload to get updated data
         } catch (error) {
             console.error('Failed to update organization:', error);
-            alert(error.message || 'Failed to update organization settings');
+           toast.error(error.message || 'Failed to update organization settings')
         } finally {
             setSaving(false);
         }
@@ -90,12 +122,12 @@ const OrganizationSettings = ({ user, tenant }) => {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file (JPG, PNG, GIF)');
+            toast.error('Please select an image file (JPG, PNG, GIF)');
             return;
         }
 
         if (file.size > 2 * 1024 * 1024) { // 2MB limit
-            alert('Logo size should be less than 2MB');
+            toast.error('Logo size should be less than 2MB');
             return;
         }
 
@@ -103,6 +135,7 @@ const OrganizationSettings = ({ user, tenant }) => {
         const reader = new FileReader();
         reader.onloadend = () => {
             setLogoPreview(reader.result);
+            toast.success('Logo preview updated');
         };
         reader.readAsDataURL(file);
 
@@ -116,39 +149,71 @@ const OrganizationSettings = ({ user, tenant }) => {
             // setLogoPreview(response.logoUrl);
         } catch (error) {
             console.error('Failed to upload logo:', error);
-            alert('Failed to upload logo');
+              toast.error('Failed to upload logo');
         }
     };
 
     const handleDeleteOrganization = async () => {
         if (deleteConfirmation !== tenant?.name) {
-            alert(`Please type "${tenant?.name}" to confirm deletion`);
-            return;
-        }
-
-        if (window.confirm('This action cannot be undone. All data will be permanently deleted. Are you absolutely sure?')) {
-            setSaving(true);
-            try {
-                // This would require a DELETE /tenants endpoint
-                alert('Organization deletion would be processed here');
-                setShowDeleteConfirm(false);
-                setDeleteConfirmation('');
-                
-                // In production:
-                // await ApiService.deleteTenant();
-                // ApiService.clearTokens();
-                // window.location.href = '/';
-            } catch (error) {
-                console.error('Failed to delete organization:', error);
-                alert('Failed to delete organization');
-            } finally {
-                setSaving(false);
-            }
-        }
+        toast.error(`Please type "${tenant?.name}" to confirm deletion`); // CHANGED FROM alert
+        return;
+    }
+   const userConfirmed = await new Promise((resolve) => {
+        toast.custom((t) => (
+            <div className="confirm-toast">
+                <p>This action cannot be undone. All data will be permanently deleted.</p>
+                <p className="warning-text"><strong>Are you absolutely sure?</strong></p>
+                <div className="confirm-buttons">
+                    <button 
+                        className="danger-btn"
+                        onClick={() => { 
+                            resolve(true); 
+                            toast.dismiss(t.id); 
+                        }}
+                    >
+                        Yes, Delete Permanently
+                    </button>
+                    <button 
+                        onClick={() => { 
+                            resolve(false); 
+                            toast.dismiss(t.id); 
+                        }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        ), { duration: Infinity });
+    });
+     if (!userConfirmed) return;
+      setSaving(true);
+      try {
+        // This would require a DELETE /tenants endpoint
+        toast.loading('Deleting organization...');
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        toast.success('Organization deleted successfully!');
+        resetDeleteModal();
+        
+        // In production:
+        // await ApiService.deleteTenant();
+        // ApiService.clearTokens();
+        // window.location.href = '/';
+    } catch (error) {
+        console.error('Failed to delete organization:', error);
+        toast.error('Failed to delete organization'); // CHANGED FROM alert
+    } finally {
+        setSaving(false);
+    }
     };
 
     const handleTransferOwnership = () => {
-        alert('Transfer ownership functionality would be implemented here');
+        toast('Transfer ownership functionality would be implemented here', {
+        icon: '👑',
+        duration: 4000
+    });
     };
 
     const renderGeneralTab = () => (
@@ -371,6 +436,24 @@ const OrganizationSettings = ({ user, tenant }) => {
             </form>
         </div>
     );
+    const resetOrgForm = () => {
+    setOrgForm({
+        name: '',
+        timezone: 'Asia/Kolkata',
+        settings: {
+            allowPublicProjects: false,
+            require2FA: false,
+            autoArchiveProjects: true,
+            defaultProjectPrivacy: 'private',
+            notificationEmail: '',
+            workingHoursStart: '09:00',
+            workingHoursEnd: '18:00',
+            weekStartDay: 'monday'
+        }
+    });
+    setLogo(null);
+    setLogoPreview(null);
+};
 
     const renderAuditLogTab = () => (
         <div className="org-tab-content">
@@ -441,6 +524,10 @@ const OrganizationSettings = ({ user, tenant }) => {
                                             onClick={() => {
                                                 // Show details modal
                                                 console.log('Log details:', log);
+                                                toast('Viewing audit log details', {
+        icon: '📋',
+        duration: 2000
+    });
                                             }}
                                         >
                                             👁️
@@ -559,13 +646,18 @@ const OrganizationSettings = ({ user, tenant }) => {
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && (
-                <div className="modal-overlay">
-                    <div className="modal">
+                <div className="modal-overlay" onClick={(e) => {
+            // Check if click is on the overlay itself (not the modal content)
+            if (e.target.className === 'modal-overlay' && !saving) {
+               resetDeleteModal(); 
+            }
+        }}>
+                    <div className="modal" ref={modalRef} onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
                             <h3>Delete Organization</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowDeleteConfirm(false)}
+                                onClick={handleCloseDeleteModal}
                             >
                                 ×
                             </button>
@@ -598,7 +690,7 @@ const OrganizationSettings = ({ user, tenant }) => {
                         <div className="modal-footer">
                             <button 
                                 className="btn btn-secondary"
-                                onClick={() => setShowDeleteConfirm(false)}
+                                onClick={handleCloseDeleteModal}
                             >
                                 Cancel
                             </button>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './Settings.css';
 
 const Settings = ({ user }) => {
@@ -44,11 +45,37 @@ const Settings = ({ user }) => {
 
     const loadSettingsData = async () => {
         try {
-            // Load user sessions
-            const sessionsData = await ApiService.getSessions();
-            if (Array.isArray(sessionsData)) {
-                setSessions(sessionsData);
+             setLoading(true);
+               const userData = await ApiService.getUserProfile(user?.id);
+              if (userData) {
+            // Update profile form with API data
+            setProfileForm({
+                    firstName: userData.first_name || userData.firstName || '',
+                    lastName: userData.last_name || userData.lastName || '',
+                    email: userData.email || '',
+                    phone: userData.phone || '',
+                    avatar: userData.avatar_url || userData.avatar || null,
+                    preferences: userData.preferences || {}
+                });
+        } else {
+            // Fallback to user prop if API fails
+            if (user) {
+                setProfileForm({
+                    firstName: user.firstName || '',
+                    lastName: user.lastName || '',
+                    email: user.email || '',
+                    phone: user.phone || '',
+                    avatar: user.avatar || null
+                });
             }
+        }
+            // Load user sessions
+            // const sessionsData = await ApiService.getSessions();
+            // if (Array.isArray(sessionsData)) {
+            //     setSessions(sessionsData);
+            // }
+
+            
 
             // Initialize profile form with user data
             if (user) {
@@ -64,10 +91,23 @@ const Settings = ({ user }) => {
             // Load preferences from user data or localStorage
             const savedPreferences = user?.preferences || JSON.parse(localStorage.getItem('userPreferences') || '{}');
             setPreferences(prev => ({ ...prev, ...savedPreferences }));
+             toast.success('Settings loaded successfully!');
 
         } catch (error) {
             console.error('Failed to load settings data:', error);
+             toast.error('Failed to load settings data'); 
+             if (user) {
+            setProfileForm({
+                firstName: user.firstName || '',
+                lastName: user.lastName || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                avatar: user.avatar || null
+            });
         }
+        }finally {
+        setLoading(false);
+    }
     };
 
     const handleProfileUpdate = async (e) => {
@@ -77,20 +117,34 @@ const Settings = ({ user }) => {
             // Update profile via API
             // This would require a new endpoint like /users/profile
             // For now, update localStorage
-            const updatedUser = {
-                ...user,
+            const response = await ApiService.updateUserProfile(user?.id, {
                 firstName: profileForm.firstName,
                 lastName: profileForm.lastName,
                 email: profileForm.email,
-                phone: profileForm.phone,
-                avatar: profileForm.avatar
-            };
-            
-            ApiService.setUser(updatedUser);
-            alert('Profile updated successfully!');
+                phone: profileForm.phone || ''
+            });
+if (response) {
+                // Update local storage with new data
+                const updatedUser = {
+                    ...user,
+                    firstName: profileForm.firstName,
+                    lastName: profileForm.lastName,
+                    email: profileForm.email,
+                    phone: profileForm.phone,
+                    avatar: profileForm.avatar
+                };
+                
+                ApiService.setUser(updatedUser);
+                
+                // Update preferences if changed
+                // await updatePreferences();
+                
+               toast.success('Profile updated successfully!')
+                loadSettingsData(); // Reload data to get latest from server
+            }
         } catch (error) {
-            console.error('Failed to update profile:', error);
-            alert('Failed to update profile');
+           console.error('Failed to update profile:', error);
+            toast.error(error.message || 'Failed to update profile')
         } finally {
             setLoading(false);
         }
@@ -100,12 +154,12 @@ const Settings = ({ user }) => {
         e.preventDefault();
         
         if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-            alert('New passwords do not match');
+             toast.error('New passwords do not match');
             return;
         }
 
         if (passwordForm.newPassword.length < 8) {
-            alert('New password must be at least 8 characters');
+             toast.error('New password must be at least 8 characters')
             return;
         }
 
@@ -116,7 +170,7 @@ const Settings = ({ user }) => {
                 passwordForm.newPassword
             );
             
-            alert('Password changed successfully!');
+             toast.success('Password changed successfully!'); 
             setPasswordForm({
                 currentPassword: '',
                 newPassword: '',
@@ -124,7 +178,7 @@ const Settings = ({ user }) => {
             });
         } catch (error) {
             console.error('Failed to change password:', error);
-            alert(error.message || 'Failed to change password');
+             toast.error(error.message || 'Failed to change password');
         } finally {
             setLoading(false);
         }
@@ -167,6 +221,17 @@ const Settings = ({ user }) => {
         
         // Save to localStorage
         localStorage.setItem('userPreferences', JSON.stringify(updated));
+        if (key === 'theme') {
+        toast(`Theme changed to ${value}`, {
+            icon: '🎨',
+            duration: 2000
+        });
+    } else if (key === 'language') {
+        toast(`Language changed to ${value}`, {
+            icon: '🌐',
+            duration: 2000
+        });
+    }
         
         // If you have an API endpoint for preferences, save there too
         // await ApiService.updatePreferences(updated);
@@ -177,12 +242,12 @@ const Settings = ({ user }) => {
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            alert('Please select an image file');
+           toast.error('Please select an image file'); 
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) { // 5MB limit
-            alert('Image size should be less than 5MB');
+            toast.error('Image size should be less than 5MB')
             return;
         }
 
@@ -192,6 +257,7 @@ const Settings = ({ user }) => {
             const reader = new FileReader();
             reader.onloadend = () => {
                 setProfileForm(prev => ({ ...prev, avatar: reader.result }));
+                 toast.success('Avatar updated successfully!'); 
                 setLoading(false);
             };
             reader.readAsDataURL(file);
@@ -202,7 +268,7 @@ const Settings = ({ user }) => {
             // const response = await ApiService.uploadAvatar(formData);
         } catch (error) {
             console.error('Failed to upload avatar:', error);
-            alert('Failed to upload avatar');
+             toast.error('Failed to upload avatar'); 
             setLoading(false);
         }
     };
@@ -490,7 +556,7 @@ const Settings = ({ user }) => {
                     <button 
                         className="btn btn-primary"
                         onClick={() => {
-                            alert('Preferences saved!');
+                           toast.success('Preferences saved successfully!'); 
                         }}
                     >
                         Save Preferences
@@ -526,7 +592,13 @@ const Settings = ({ user }) => {
             <div className="settings-tabs">
                 <button 
                     className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('profile')}
+                    onClick={() => {
+        setActiveTab('profile');
+        toast('Editing profile...', {
+            icon: '👤',
+            duration: 1000
+        });
+    }}
                 >
                     <span className="tab-icon">👤</span>
                     <span>Profile</span>

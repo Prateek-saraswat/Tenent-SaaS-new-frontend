@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast'
 import './Overview.css';
 
 function Overview({ user, tenant, usage }) {
@@ -19,52 +20,64 @@ function Overview({ user, tenant, usage }) {
 
     useEffect(() => {
         const loadOverviewData = async () => {
-            try {
-                // Load projects
-                const projects = await ApiService.getProjects({ status: 'active', limit: 100 });
+    try {
+        setLoading(true);
+        
+        // Optional: Show loading toast for longer operations
+        const loadingToast = toast.loading('Loading dashboard data...');
+        
+        // Load projects
+        const projects = await ApiService.getProjects({ status: 'active', limit: 100 });
 
-                // Load tasks
-                const tasks = await ApiService.getTasks({ limit: 100 });
+        // Load tasks
+        const tasks = await ApiService.getTasks({ limit: 100 });
 
-                // Load team members
-                const team = await ApiService.getUsers({ status: 'active' });
+        // Load team members
+        const team = await ApiService.getUsers({ status: 'active' });
 
-                // Load recent time entries
-                const today = new Date().toISOString().split('T')[0];
-                const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                const weeklyTime = await ApiService.getWeeklyTime(lastWeek, today);
+        // Load recent time entries
+        const today = new Date().toISOString().split('T')[0];
+        const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const weeklyTime = await ApiService.getWeeklyTime(lastWeek, today);
 
-                // Calculate stats
-                const activeTasks = Array.isArray(tasks) ? tasks.filter(t => t.status !== 'completed').length : 0;
-                const completedTasks = Array.isArray(tasks) ? tasks.filter(t => t.status === 'completed').length : 0;
+        // Calculate stats
+        const activeTasks = Array.isArray(tasks) ? tasks.filter(t => t.status !== 'completed').length : 0;
+        const completedTasks = Array.isArray(tasks) ? tasks.filter(t => t.status === 'completed').length : 0;
 
-                // Calculate weekly hours
-                let weeklyHours = 0;
-                if (Array.isArray(weeklyTime)) {
-                    weeklyHours = weeklyTime.reduce((sum, entry) => sum + (entry.total_minutes || 0), 0) / 60;
-                }
+        // Calculate weekly hours
+        let weeklyHours = 0;
+        if (Array.isArray(weeklyTime)) {
+            weeklyHours = weeklyTime.reduce((sum, entry) => sum + (entry.total_minutes || 0), 0) / 60;
+        }
 
-                setStats({
-                    totalProjects: Array.isArray(projects) ? projects.length : 0,
-                    activeTasks,
-                    completedTasks,
-                    teamMembers: Array.isArray(team?.users) ? team.users.length : 0,
-                    hoursThisWeek: weeklyHours,
-                    storageUsed: usage?.current?.storage_gb || '0'
-                });
+        setStats({
+            totalProjects: Array.isArray(projects) ? projects.length : 0,
+            activeTasks,
+            completedTasks,
+            teamMembers: Array.isArray(team?.users) ? team.users.length : 0,
+            hoursThisWeek: weeklyHours,
+            storageUsed: usage?.current?.storage_gb || '0'
+        });
 
-                // Load audit logs for recent activity
-                const auditLogs = await ApiService.getAuditLogs({ limit: 5 });
-                if (Array.isArray(auditLogs)) {
-                    setRecentActivity(auditLogs);
-                }
+        // Load audit logs for recent activity
+        const auditLogs = await ApiService.getAuditLogs({ limit: 5 });
+        if (Array.isArray(auditLogs)) {
+            setRecentActivity(auditLogs);
+        }
 
-            } catch (error) {
-                console.error('Failed to load overview data:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+        // Dismiss loading toast
+        toast.dismiss(loadingToast);
+        
+        // Show success toast if data loaded successfully
+        toast.success('Dashboard loaded successfully!');
+
+    } catch (error) {
+        console.error('Failed to load overview data:', error);
+        toast.error('Failed to load dashboard data. Please try again.');
+    } finally {
+        setLoading(false);
+    }
+};
 
         loadOverviewData();
     }, [usage]);
@@ -76,34 +89,66 @@ function Overview({ user, tenant, usage }) {
 
     // Quick Actions Handlers
     const handleCreateProject = () => {
+            toast('Navigating to create project...', {
+        icon: '📁',
+        duration: 2000
+    });
         navigate('/projects', { state: { createNew: true } });
     };
 
     const handleInviteMember = () => {
+          toast('Opening team invitation...', {
+        icon: '👥',
+        duration: 2000
+    });
         navigate('/team', { state: { showInvite: true } });
     };
 
     const handleCreateTask = () => {
+          toast('Creating new task...', {
+        icon: '✅',
+        duration: 2000
+    });
         navigate('/tasks', { state: { createNew: true } });
     };
 
     const handleStartTimer = () => {
+         toast('Starting timer...', {
+        icon: '⏱️',
+        duration: 2000
+    });
         navigate('/time', { state: { startTimer: true } });
     };
 
     const handleViewReports = () => {
+         toast('Loading reports...', {
+        icon: '📈',
+        duration: 2000
+    });
         navigate('/reports');
     };
 
     const handleSettings = () => {
+          toast('Opening settings...', {
+        icon: '⚙️',
+        duration: 2000
+    });
         navigate('/settings');
     };
 
     const handleViewAllActivity = () => {
+          toast('Loading audit logs...', {
+        icon: '📋',
+        duration: 2000
+    });
         navigate('/organization/audit-logs');
     };
 
     const handleUpgradePlan = () => {
+         toast('Opening billing page...', {
+        icon: '💳',
+        duration: 2000
+    });
         navigate('/billing');
     };
 
@@ -112,6 +157,9 @@ function Overview({ user, tenant, usage }) {
             <div className="overview-loading">
                 <div className="spinner"></div>
                 <p>Loading overview...</p>
+                {/* {toast.loading('Loading your dashboard...', {
+                id: 'dashboard-loading'
+            })} */}
             </div>
         );
     }

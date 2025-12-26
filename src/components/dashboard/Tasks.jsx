@@ -1,6 +1,7 @@
 // components/dashboard/Tasks.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './Tasks.css';
 
 const Tasks = ({ user, tenant }) => {
@@ -9,6 +10,9 @@ const Tasks = ({ user, tenant }) => {
     const [loading, setLoading] = useState(true);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showTaskDetails, setShowTaskDetails] = useState(null);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const createModalRef = useRef(null);
+    const detailsModalRef = useRef(null);
     const [filters, setFilters] = useState({
         projectId: '',
         status: '',
@@ -16,6 +20,7 @@ const Tasks = ({ user, tenant }) => {
         assignedTo: '',
         search: ''
     });
+
 
     const [taskForm, setTaskForm] = useState({
         projectId: '',
@@ -29,9 +34,64 @@ const Tasks = ({ user, tenant }) => {
         startDate: ''
     });
 
+    const [formErrors, setFormErrors] = useState({
+    startDate: '',
+    dueDate: '',
+    estimatedHours: ''
+});
+ useEffect(() => {
+        const handleClickOutside = (event) => {
+            // For create task modal
+            if (showCreateModal && 
+                createModalRef.current && 
+                !createModalRef.current.contains(event.target) &&
+                !isSubmitting
+            ) {
+                resetCreateTaskModal();
+            }
+            
+            // For task details modal
+            if (showTaskDetails && 
+                detailsModalRef.current && 
+                !detailsModalRef.current.contains(event.target)
+            ) {
+                 resetTaskDetailsModal(); 
+            }
+        };
+
+        if (showCreateModal || showTaskDetails) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showCreateModal, showTaskDetails, isSubmitting]);
+
     useEffect(() => {
         loadData();
     }, [filters]);
+
+    const resetCreateTaskModal = () => {
+    setShowCreateModal(false);
+    setIsSubmitting(false);
+    setFormErrors({ startDate: '', dueDate: '', estimatedHours: '' });
+    setTaskForm({
+        projectId: '',
+        title: '',
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        type: 'task',
+        estimatedHours: '',
+        dueDate: '',
+        startDate: ''
+    });
+};
+
+const resetTaskDetailsModal = () => {
+    setShowTaskDetails(null);
+};
 
     const loadData = async () => {
         try {
@@ -55,64 +115,138 @@ const Tasks = ({ user, tenant }) => {
             if (Array.isArray(tasksData)) {
                 setTasks(tasksData);
             }
-
+              toast.success('Tasks loaded successfully!');
         } catch (error) {
             console.error('Failed to load tasks:', error);
+             toast.error('Failed to load tasks');
         } finally {
             setLoading(false);
         }
     };
+    const validateDates = (startDate, dueDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    const errors = { startDate: '', dueDate: '' };
+
+    if (startDate) {
+        const start = new Date(startDate);
+        const now = new Date(today);
+        
+        if (start < now) {
+            errors.startDate = 'Start date cannot be in the past';
+        }
+        
+        // Check for invalid year (like 0001 or 0000)
+        if (start.getFullYear() < 1900) {
+            errors.startDate = 'Please enter a valid year';
+        }
+    }
+
+    if (dueDate && startDate) {
+        const due = new Date(dueDate);
+        const start = new Date(startDate);
+        
+        if (due < start) {
+            errors.dueDate = 'Due date must be after start date';
+        }
+    }
+
+    return errors;
+};
 
     const handleCreateTask = async (e) => {
         e.preventDefault();
+
+        if (isSubmitting) return;
+        setIsSubmitting(true);
+         const dateErrors = validateDates(taskForm.startDate, taskForm.dueDate);
+    if (dateErrors.startDate || dateErrors.dueDate) {
+        setFormErrors(dateErrors);
+        setIsSubmitting(false);
+        return;
+    }
+     setFormErrors({ startDate: '', dueDate: '', estimatedHours: '' });
         try {
             const response = await ApiService.createTask(taskForm);
             if (response && response.taskId) {
-                setShowCreateModal(false);
-                setTaskForm({
-                    projectId: '',
-                    title: '',
-                    description: '',
-                    status: 'todo',
-                    priority: 'medium',
-                    type: 'task',
-                    estimatedHours: '',
-                    dueDate: '',
-                    startDate: ''
-                });
+                toast.success('Task created successfully!')
+                resetCreateTaskModal();
                 loadData();
             }
         } catch (error) {
             console.error('Failed to create task:', error);
-        }
+            toast.error(error.message || 'Failed to create task')
+        }finally {
+        setIsSubmitting(false);  // Add this
+    }
     };
 
     const handleUpdateTask = async (taskId, updates) => {
         try {
             await ApiService.updateTask(taskId, updates);
+            toast.success('Task updated successfully!');
             loadData();
         } catch (error) {
             console.error('Failed to update task:', error);
+            toast.error(error.message || 'Failed to update task'); 
         }
     };
 
     const handleDeleteTask = async (taskId) => {
-        if (window.confirm('Are you sure you want to delete this task?')) {
-            try {
-                await ApiService.deleteTask(taskId);
-                loadData();
-            } catch (error) {
-                console.error('Failed to delete task:', error);
-            }
+    // Get task title for better confirmation message
+    const taskToDelete = tasks.find(task => task.id === taskId);
+    const taskTitle = taskToDelete?.title || 'this task';
+    
+    // Replace window.confirm with custom toast confirmation
+    const userConfirmed = await new Promise((resolve) => {
+        toast.custom((t) => (
+            <div className="confirm-toast">
+                <p>Are you sure you want to delete "{taskTitle}"?</p>
+                <div className="confirm-buttons">
+                    <button 
+                        className="danger-btn"
+                        onClick={() => { 
+                            resolve(true); 
+                            toast.dismiss(t.id); 
+                        }}
+                    >
+                        Delete Task
+                    </button>
+                    <button 
+                        onClick={() => { 
+                            resolve(false); 
+                            toast.dismiss(t.id); 
+                        }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        ), { duration: Infinity });
+    });
+
+    if (!userConfirmed) return;
+
+    try {
+        await ApiService.deleteTask(taskId);
+        toast.success(`Task "${taskTitle}" deleted successfully!`); // ADD THIS
+        loadData();
+        if (showTaskDetails?.id === taskId) {
+            resetTaskDetailsModal();
         }
-    };
+    } catch (error) {
+        console.error('Failed to delete task:', error);
+        toast.error(error.message || 'Failed to delete task'); // ADD THIS
+    }
+};
 
     const handleAssignTask = async (taskId, userIds) => {
         try {
             await ApiService.assignTask(taskId, userIds);
+            toast.success('Task assigned successfully!');
             loadData();
         } catch (error) {
             console.error('Failed to assign task:', error);
+            toast.error(error.message || 'Failed to assign task')
         }
     };
 
@@ -150,7 +284,18 @@ const Tasks = ({ user, tenant }) => {
                             type="text"
                             placeholder="Search tasks..."
                             value={filters.search}
-                            onChange={(e) => setFilters({...filters, search: e.target.value})}
+                            onChange={(e) =>{
+
+                                setFilters({...filters, search: e.target.value})
+                                if (e.target.value) {
+        toast(`Searching for "${e.target.value}"...`, {
+            icon: '🔍',
+            duration: 500
+        });
+    }
+                            }
+                                
+                            } 
                             className="search-input"
                         />
                         <select 
@@ -190,7 +335,28 @@ const Tasks = ({ user, tenant }) => {
                     </div>
                     <button 
                         className="btn btn-primary"
-                        onClick={() => setShowCreateModal(true)}
+                        onClick={() =>{
+                            setShowCreateModal(true)
+                            setTaskForm({
+            projectId: '',
+            title: '',
+            description: '',
+            status: 'todo',
+            priority: 'medium',
+            type: 'task',
+            estimatedHours: '',
+            dueDate: '',
+            startDate: ''
+        });
+        setFormErrors({ startDate: '', dueDate: '', estimatedHours: '' });
+         toast('Creating new task...', { // ADD THIS
+            icon: '✅',
+            duration: 1000
+        });
+                        }
+                            
+
+                        } 
                     >
                         + New Task
                     </button>
@@ -222,7 +388,13 @@ const Tasks = ({ user, tenant }) => {
                                                 onDragStart={(e) => {
                                                     e.dataTransfer.setData('taskId', task.id);
                                                 }}
-                                                onClick={() => setShowTaskDetails(task)}
+                                                onClick={() => {
+                                                    setShowTaskDetails(task)
+                                                    toast(`Opening "${task.title}" details...`, { // ADD THIS
+        icon: '📋',
+        duration: 1000
+    });
+                                                }}
                                             >
                                                 <div className="task-header">
                                                     <h4>{task.title}</h4>
@@ -265,18 +437,25 @@ const Tasks = ({ user, tenant }) => {
 
             {/* Create Task Modal */}
             {showCreateModal && (
-                <div className="modal-overlay">
-                    <div className="modal large">
+                <div className="modal-overlay" onClick={(e) => {
+    if (e.target.className === 'modal-overlay' && !isSubmitting) {
+        resetCreateTaskModal();  // Add this
+    }
+}}>
+                    <div className="modal large"  ref={createModalRef}>
                         <div className="modal-header">
                             <h3>Create New Task</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowCreateModal(false)}
+                                onClick={resetCreateTaskModal}
+                                disabled={isSubmitting}
                             >
                                 ×
                             </button>
                         </div>
-                        <form onSubmit={handleCreateTask}>
+                        <form onSubmit={handleCreateTask} onKeyDown={(e) => {
+    if (e.key === 'Enter') e.preventDefault();
+}}>
                             <div className="modal-body">
                                 <div className="form-group">
                                     <label>Project *</label>
@@ -341,34 +520,52 @@ const Tasks = ({ user, tenant }) => {
                                         <label>Start Date</label>
                                         <input
                                             type="date"
+                                            className={formErrors.startDate ? 'error' : ''}
+                                              min={new Date().toISOString().split('T')[0]}
                                             value={taskForm.startDate}
-                                            onChange={(e) => setTaskForm({...taskForm, startDate: e.target.value})}
+                                            onChange={(e) => {
+
+                                                setTaskForm({...taskForm, startDate: e.target.value})
+                                                 setFormErrors({...formErrors, startDate: ''});
+                                                 
+                                            }}
                                         />
                                     </div>
                                     <div className="form-group">
                                         <label>Due Date</label>
                                         <input
                                             type="date"
+                                            className={formErrors.dueDate ? 'error' : ''}
+                                             min={taskForm.startDate || new Date().toISOString().split('T')[0]}
                                             value={taskForm.dueDate}
-                                            onChange={(e) => setTaskForm({...taskForm, dueDate: e.target.value})}
+                                            onChange={(e) => {
+                                                setTaskForm({...taskForm, dueDate: e.target.value})
+                                                 setFormErrors({...formErrors, dueDate: ''});
+                                            }}
                                         />
                                     </div>
                                 </div>
                                 <div className="form-group">
                                     <label>Estimated Hours</label>
                                     <input
-                                        type="number"
+                                        type="tel"
+                                        
                                         step="0.5"
                                         value={taskForm.estimatedHours}
                                         onChange={(e) => setTaskForm({...taskForm, estimatedHours: e.target.value})}
+                                         placeholder="e.g., 2.5"
+                                         min="0"
+                                         max="999"
                                     />
+                                     <small className="form-hint">Enter hours (e.g., 1.5 for 1 hour 30 minutes)</small>
                                 </div>
                             </div>
                             <div className="modal-footer">
                                 <button 
                                     type="button"
                                     className="btn btn-secondary"
-                                    onClick={() => setShowCreateModal(false)}
+                                    onClick={resetCreateTaskModal}
+                                    disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
@@ -376,7 +573,7 @@ const Tasks = ({ user, tenant }) => {
                                     type="submit"
                                     className="btn btn-primary"
                                 >
-                                    Create Task
+                                   {isSubmitting ? 'Creating...' : 'Create Task'}
                                 </button>
                             </div>
                         </form>
@@ -386,8 +583,12 @@ const Tasks = ({ user, tenant }) => {
 
             {/* Task Details Modal */}
             {showTaskDetails && (
-                <div className="modal-overlay">
-                    <div className="modal xlarge">
+                <div className="modal-overlay" onClick={(e) => {
+    if (e.target.className === 'modal-overlay') {
+        resetTaskDetailsModal();  // Add this
+    }
+}}>
+                    <div className="modal xlarge" ref={detailsModalRef}>
                         <div className="modal-header">
                             <h3>Task Details</h3>
                             <button 

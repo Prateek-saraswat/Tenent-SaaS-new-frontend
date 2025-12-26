@@ -464,3 +464,54 @@
 .btn:disabled .spinner-small {
     display: inline-block;
 }
+
+/* Terms checkbox styling */
+.form-check {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.form-check-input {
+    margin-top: 3px;
+    margin-right: 10px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.form-check-input.error {
+    border-color: #ef4444;
+    outline-color: #ef4444;
+}
+
+.form-check-label {
+    font-size: 14px;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.terms-link {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.terms-link:hover {
+    text-decoration: underline;
+}
+
+/* Error message styling */
+.error-message {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 4px;
+    margin-left: 26px; /* Align with checkbox text */
+    display: block;
+}
+
+/* Alternative: You can also add a more prominent error indicator */
+.form-check-input.error + .form-check-label {
+    /* You can optionally add some styling to the label when checkbox has error */
+    /* But keep the text color normal */
+    color: #374151;
+}

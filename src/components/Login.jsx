@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import './Login.css';
+import toast from 'react-hot-toast';
 
 const Login = () => {
     const [formData, setFormData] = useState({
@@ -26,8 +27,14 @@ const Login = () => {
 
     // Clear auth error when component mounts
     useEffect(() => {
-        clearError();
-    }, [clearError]);
+           if (authError) {
+        toast.error(authError, {
+            duration: 4000,
+            position: 'top-right'
+        });
+        clearError(); // Clear error after showing toast
+    }
+    }, [authError ,clearError]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -68,10 +75,14 @@ const Login = () => {
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             setIsSubmitting(false);
+            const firstErrorKey = Object.keys(validationErrors)[0];
+        toast.error(validationErrors[firstErrorKey]);
             return;
         }
 
         clearError();
+
+        const toastId = toast.loading('Signing in...'); 
         
         const result = await login(
             formData.email,
@@ -80,8 +91,12 @@ const Login = () => {
         );
 
         if (result.success) {
+            toast.success('✅ Login successful! Redirecting...', { id: toastId });
             const from = location.state?.from?.pathname || '/dashboard';
             navigate(from, { replace: true });
+        }
+        else {
+             toast.dismiss(toastId);
         }
         
         setIsSubmitting(false);
@@ -98,11 +113,11 @@ const Login = () => {
                     <p className="login-subtitle">Sign in to your account</p>
                 </div>
 
-                {authError && (
+                {/* {authError && (
                     <div className="alert alert-error">
                         {authError}
                     </div>
-                )}
+                )} */}
 
                 <form onSubmit={handleSubmit} className="login-form" noValidate>
                     <div className="form-group">

@@ -568,3 +568,30 @@
     grid-template-columns: 1fr;
   }
 }
+/* Custom toast styles */
+.toast-success {
+    background: #10B981 !important;
+    color: white !important;
+}
+
+.toast-error {
+    background: #EF4444 !important;
+    color: white !important;
+}
+
+.toast-warning {
+    background: #F59E0B !important;
+    color: white !important;
+}
+
+.toast-info {
+    background: #3B82F6 !important;
+    color: white !important;
+}
+
+/* Custom toast for step completion */
+.step-completion-toast {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    font-weight: 600;
+}

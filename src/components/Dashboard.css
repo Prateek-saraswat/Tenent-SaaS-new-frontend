@@ -722,6 +722,8 @@
   justify-content: center;
   z-index: 2000;
   padding: 20px;
+   box-sizing: border-box; 
+  overflow: hidden;
 }
 
 .modal {

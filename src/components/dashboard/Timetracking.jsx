@@ -1,6 +1,7 @@
 // components/dashboard/TimeTracking.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ApiService from '../../services/auth.js';
+import toast from 'react-hot-toast';
 import './TimeTracking.css';
 
 const TimeTracking = ({ user, tenant }) => {
@@ -10,6 +11,13 @@ const TimeTracking = ({ user, tenant }) => {
     const [showManualEntry, setShowManualEntry] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
     const [tasks, setTasks] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const manualEntryModalRef = useRef(null);
+    const [successMessage , setSuccessMessage] = ('')
+    const [formErrors, setFormErrors] = useState({
+    startTime: '',
+    endTime: ''
+});
     
     const [manualEntry, setManualEntry] = useState({
         taskId: '',
@@ -18,6 +26,46 @@ const TimeTracking = ({ user, tenant }) => {
         description: '',
         isBillable: true
     });
+    // Reset manual entry form function
+const resetManualEntry = () => {
+    setManualEntry({
+        taskId: '',
+        startTime: '',
+        endTime: '',
+        description: '',
+        isBillable: true
+    });
+    setFormErrors({ startTime: '', endTime: '' });
+};
+
+// Close manual entry modal handler
+const handleCloseManualEntry = () => {
+    if (!isSubmitting) {
+        resetManualEntry();
+        setShowManualEntry(false);
+    }
+};
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showManualEntry && 
+                manualEntryModalRef.current && 
+                !manualEntryModalRef.current.contains(event.target) &&
+                !isSubmitting
+            ) {
+                handleCloseManualEntry();
+                setFormErrors({ startTime: '', endTime: '' });
+            }
+        };
+
+        if (showManualEntry) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showManualEntry, isSubmitting]);
 
     useEffect(() => {
         loadTimeData();
@@ -45,40 +93,83 @@ const TimeTracking = ({ user, tenant }) => {
             if (Array.isArray(tasksData)) {
                 setTasks(tasksData);
             }
+            toast.success('Time data loaded successfully!'); 
 
         } catch (error) {
             console.error('Failed to load time data:', error);
+              toast.error('Failed to load time data');
         } finally {
             setLoading(false);
         }
     };
 
+    const validateManualEntry = (startTime, endTime) => {
+    const errors = { startTime: '', endTime: '' };
+    const now = new Date();
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    
+    if (start > now) {
+        errors.startTime = 'Start time cannot be in the future';
+    }
+    
+    if (endTime && startTime && end <= start) {
+        errors.endTime = 'End time must be after start time';
+    }
+    
+    if (end > now) {
+        errors.endTime = 'End time cannot be in the future';
+    }
+    
+    return errors;
+};
     const handleStartTimer = async (taskId) => {
         try {
             const response = await ApiService.startTimer(taskId);
             if (response && response.entryId) {
+                toast.success('Timer started successfully!');
                 loadTimeData(); // Reload data
             }
         } catch (error) {
             console.error('Failed to start timer:', error);
+            toast.error(error.message || 'Failed to start timer')
         }
     };
 
     const handleStopTimer = async () => {
         try {
             await ApiService.stopTimer();
+            toast.success('Timer stopped successfully!');
             setActiveTimer(null);
             loadTimeData(); // Reload data
         } catch (error) {
             console.error('Failed to stop timer:', error);
+             toast.error(error.message || 'Failed to stop timer')
         }
     };
 
     const handleAddManualEntry = async (e) => {
         e.preventDefault();
+           if (isSubmitting) return;
+           setIsSubmitting(true);
+           const errors = validateManualEntry(manualEntry.startTime, manualEntry.endTime);
+    if (errors.startTime || errors.endTime) {
+        setFormErrors(errors);
+          if (errors.startTime) toast.error(errors.startTime);
+        if (errors.endTime) toast.error(errors.endTime);
+        setIsSubmitting(false);
+        return;
+    }
+    
+    setFormErrors({ startTime: '', endTime: '' });
         try {
             const response = await ApiService.addManualTimeEntry(manualEntry);
             if (response && response.entryId) {
+                 toast.success('Time entry added successfully!');
+                setSuccessMessage('Time entry added successfully!');
+                 setTimeout(() => {
+                setSuccessMessage('');
+            }, 3000);
                 setShowManualEntry(false);
                 setManualEntry({
                     taskId: '',
@@ -91,6 +182,12 @@ const TimeTracking = ({ user, tenant }) => {
             }
         } catch (error) {
             console.error('Failed to add manual entry:', error);
+             toast.error(error.message || 'Failed to add time entry');
+            setFormErrors({ 
+            submit: error.message || 'Failed to add time entry. Please try again.' 
+        });
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -99,13 +196,18 @@ const TimeTracking = ({ user, tenant }) => {
             .filter(e => e.status === 'draft')
             .map(e => e.id);
         
-        if (entryIds.length === 0) return;
+        if (entryIds.length === 0){
+toast.error('No draft entries to submit'); 
+return
+        }
         
         try {
             await ApiService.submitTimesheet(entryIds);
+            toast.success('Timesheet submitted successfully!');
             loadTimeData(); // Reload data
         } catch (error) {
             console.error('Failed to submit timesheet:', error);
+            toast.error(error.message || 'Failed to submit timesheet');
         }
     };
 
@@ -122,6 +224,17 @@ const TimeTracking = ({ user, tenant }) => {
     return (
         <div className="time-tracking-container">
             {/* Time Tracking header */}
+             {/* {successMessage && (
+            <div className="alert alert-success">
+                {successMessage}
+                <button 
+                    className="alert-close"
+                    onClick={() => setSuccessMessage('')}
+                >
+                    ×
+                </button>
+            </div>
+        )} */}
             <div className="time-header">
                 <div className="header-left">
                     <h1>Time Tracking</h1>
@@ -136,7 +249,10 @@ const TimeTracking = ({ user, tenant }) => {
                     />
                     <button 
                         className="btn btn-secondary"
-                        onClick={() => setShowManualEntry(true)}
+                        onClick={() => {
+                            setShowManualEntry(true)
+                            resetManualEntry();
+                        }}
                     >
                         + Manual Entry
                     </button>
@@ -315,24 +431,31 @@ const TimeTracking = ({ user, tenant }) => {
             {/* Manual Entry Modal */}
             {showManualEntry && (
                 <div className="modal-overlay">
-                    <div className="modal">
+                    <div className="modal"  ref={manualEntryModalRef}>
                         <div className="modal-header">
                             <h3>Add Manual Time Entry</h3>
                             <button 
                                 className="close-btn"
-                                onClick={() => setShowManualEntry(false)}
+                                onClick={handleCloseManualEntry}
+                                disabled={isSubmitting}
                             >
                                 ×
                             </button>
                         </div>
                         <form onSubmit={handleAddManualEntry}>
                             <div className="modal-body">
+                                {formErrors.submit && (
+            <div className="alert alert-error">
+                {formErrors.submit}
+            </div>
+        )}
                                 <div className="form-group">
                                     <label>Task *</label>
                                     <select
                                         value={manualEntry.taskId}
                                         onChange={(e) => setManualEntry({...manualEntry, taskId: e.target.value})}
                                         required
+                                         disabled={isSubmitting}
                                     >
                                         <option value="">Select Task</option>
                                         {tasks.map(task => (
@@ -349,6 +472,7 @@ const TimeTracking = ({ user, tenant }) => {
                                         value={manualEntry.description}
                                         onChange={(e) => setManualEntry({...manualEntry, description: e.target.value})}
                                         placeholder="What did you work on?"
+                                        disabled={isSubmitting}
                                     />
                                 </div>
                                 <div className="form-row">
@@ -356,19 +480,42 @@ const TimeTracking = ({ user, tenant }) => {
                                         <label>Start Time *</label>
                                         <input
                                             type="datetime-local"
+                                             className={formErrors.startTime ? 'error' : ''}
+                                              max={new Date().toISOString().slice(0, 16)}
                                             value={manualEntry.startTime}
-                                            onChange={(e) => setManualEntry({...manualEntry, startTime: e.target.value})}
+                                            onChange={(e) => {
+    setManualEntry({...manualEntry, startTime: e.target.value});
+    if (formErrors.startTime) {
+        setFormErrors(prev => ({ ...prev, startTime: '' }));
+    }
+}}
                                             required
+                                            disabled={isSubmitting}
                                         />
+                                         {formErrors.startTime && (
+        <div className="error-message">{formErrors.startTime}</div>
+    )}
                                     </div>
                                     <div className="form-group">
                                         <label>End Time *</label>
                                         <input
                                             type="datetime-local"
+                                             className={formErrors.endTime ? 'error' : ''}
+                                             min={manualEntry.startTime || new Date().toISOString().slice(0, 16)}
+                                              max={new Date().toISOString().slice(0, 16)}
                                             value={manualEntry.endTime}
-                                            onChange={(e) => setManualEntry({...manualEntry, endTime: e.target.value})}
+                                            onChange={(e) => {
+    setManualEntry({...manualEntry, endTime: e.target.value});
+    if (formErrors.endTime) {
+        setFormErrors(prev => ({ ...prev, endTime: '' }));
+    }
+}}
                                             required
+                                            disabled={isSubmitting}
                                         />
+                                        {formErrors.endTime && (
+        <div className="error-message">{formErrors.endTime}</div>
+    )}
                                     </div>
                                 </div>
                                 <div className="form-check">
@@ -377,6 +524,7 @@ const TimeTracking = ({ user, tenant }) => {
                                         id="isBillable"
                                         checked={manualEntry.isBillable}
                                         onChange={(e) => setManualEntry({...manualEntry, isBillable: e.target.checked})}
+                                        disabled={isSubmitting}
                                     />
                                     <label htmlFor="isBillable">Billable</label>
                                 </div>
@@ -385,7 +533,8 @@ const TimeTracking = ({ user, tenant }) => {
                                 <button 
                                     type="button"
                                     className="btn btn-secondary"
-                                    onClick={() => setShowManualEntry(false)}
+                                    onClick={handleCloseManualEntry}
+                                    disabled={isSubmitting}
                                 >
                                     Cancel
                                 </button>
@@ -393,7 +542,7 @@ const TimeTracking = ({ user, tenant }) => {
                                     type="submit"
                                     className="btn btn-primary"
                                 >
-                                    Add Entry
+                                     {isSubmitting ? 'Adding...' : 'Add Entry'}
                                 </button>
                             </div>
                         </form>

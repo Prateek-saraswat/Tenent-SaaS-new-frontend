@@ -36,11 +36,7 @@ const resetInviteForm = () => {
 
 // Reset role form function
 const resetRoleForm = () => {
-    setRoleForm({
-        name: '',
-        description: '',
-        permissions: []
-    });
+   
     setErrors({});
 };
 
@@ -133,6 +129,10 @@ const validateInviteForm = () => {
             // Load pending invitations
             // This endpoint needs to be created in your backend
             // For now, we'll use empty array
+            const invitesData = await ApiService.apiCall('/users/invitations/pending', 'GET');
+if (Array.isArray(invitesData)) {
+    setInvitations(invitesData);
+}
              toast.success('Team data loaded successfully!');
 
         } catch (error) {
@@ -143,48 +143,73 @@ const validateInviteForm = () => {
         }
     };
 
-    const handleInviteUser = async (e) => {
-        e.preventDefault();
-         if (!validateInviteForm()) {
+   const handleInviteUser = async (e) => {
+    e.preventDefault();
+
+    // Validate form before submitting
+    const isValid = validateInviteForm();
+    if (!isValid || isSubmitting) {
         return;
     }
-         if (isSubmitting) return;
-          setIsSubmitting(true);
-          setErrors({}); // ADD THIS
-    setSuccessMessage(''); // ADD THIS
-        try {
-            const response = await ApiService.inviteUser(inviteForm);
-            if (response && response.invitationId) {
-                toast.success('Invitation sent successfully!');
-                 setSuccessMessage('Invitation sent successfully!');
-                setShowInviteModal(false);
-                setInviteForm({
-                    email: '',
-                    firstName: '',
-                    lastName: '',
-                    roleId: ''
-                });
-                 setTimeout(() => {
-                setSuccessMessage('');
-            }, 3000);
-                // Show success message
-                alert('Invitation sent successfully!');
-                setTimeout(() => {
-                handleCloseInviteModal(); // Changed from setShowInviteModal(false)
-                loadTeamData(); // Refresh team data
-            }, 1500);
-            }
-        } catch (error) {
-            console.error('Failed to invite user:', error);
-         toast.error(error.message || 'Failed to send invitation');
 
-             setErrors({ // ADD THIS
-            submit: error.message || 'Failed to send invitation. Please try again.' 
-        });
-        }finally{
-            setIsSubmitting(false);
+    setIsSubmitting(true);
+    setErrors({});
+    setSuccessMessage('');
+
+    try {
+        console.log('Sending invitation with data:', inviteForm); // Debug log
+        
+        // Make sure we're sending the data in correct format
+        const invitationData = {
+            email: inviteForm.email.trim(),
+            firstName: inviteForm.firstName.trim(),
+            lastName: inviteForm.lastName.trim(),
+            roleId: inviteForm.roleId,
+            tenantId: tenant?.id || user?.tenant_id // Add tenant ID if needed
+        };
+
+        console.log('Formatted invitation data:', invitationData); // Debug log
+        
+        const response = await ApiService.inviteUser(invitationData);
+        
+        console.log('API Response:', response); // Debug log
+
+        if (response.success || response.message) {
+            toast.success(response.message || 'Invitation sent successfully!');
+            setSuccessMessage(response.message || 'Invitation sent successfully!');
+            
+            // Reset form and close modal
+            handleCloseInviteModal();
+            
+            // Reload data
+            await loadTeamData();
+            
+            // Auto hide success message
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } else {
+            throw new Error('No success message from server');
         }
-    };
+
+    } catch (error) {
+        console.error('Failed to invite user:', error);
+        
+        // Show detailed error message
+        const errorMessage = error.message || 
+                            error.response?.data?.message || 
+                            error.response?.data?.error ||
+                            'Failed to send invitation. Please try again.';
+        
+        toast.error(errorMessage);
+        
+        setErrors({
+            general: errorMessage,
+            ...(error.response?.data?.errors || {}) // Include field-specific errors if any
+        });
+
+    } finally {
+        setIsSubmitting(false);
+    }
+};
     const handleInputChange = (field, value) => {
     setInviteForm(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
@@ -461,7 +486,10 @@ const validateInviteForm = () => {
                                 ×
                             </button>
                         </div>
-                        <form onSubmit={handleInviteUser}>
+                        <form  onSubmit={(e) => {
+    e.preventDefault();
+    handleInviteUser(e);
+  }}>
                             <div className="modal-body">
                                 <div className="form-group">
                                     <label>Email Address *</label>

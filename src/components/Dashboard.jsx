@@ -9,6 +9,7 @@ import './Dashboard.css';
 import Overview from './dashboard/Overview2.jsx';
 import Projects from './dashboard/Projects';
 import Tasks from './dashboard/Tasks';
+import Tasks2 from './dashboard/Tasks';
 import TimeTracking from './dashboard/Timetracking.jsx';
 import Team from './dashboard/Team';
 import Reports from './dashboard/Reports';
@@ -74,6 +75,18 @@ const Dashboard = () => {
         initializeDashboard();
     }, [navigate]);
 
+    const refreshTenant = async () => {
+    try {
+        const tenantData = await ApiService.getCurrentTenant();
+        if (tenantData && !tenantData.error) {
+            setTenant(tenantData); // 🔥 THIS IS THE KEY
+        }
+    } catch (error) {
+        console.error('Failed to refresh tenant:', error);
+    }
+};
+
+
     const loadNotifications = async () => {
         try {
             const notificationsData = await ApiService.getNotifications({ limit: 5 });
@@ -134,7 +147,7 @@ const Dashboard = () => {
             case 'projects':
                 return <Projects user={user} tenant={tenant} />;
             case 'tasks':
-                return <Tasks user={user} tenant={tenant} />;
+                return <Tasks2 user={user} tenant={tenant} />;
             case 'time':
                 return <TimeTracking user={user} tenant={tenant} />;
             case 'team':
@@ -146,7 +159,7 @@ const Dashboard = () => {
             case 'organization':
                 return <OrganizationSettings user={user} tenant={tenant} />;
             case 'billing':
-                return <Billing user={user} tenant={tenant} usage={usage} />;
+                return <Billing user={user} tenant={tenant} usage={usage}  refreshTenant={refreshTenant}/>;
             default:
                 return <Overview user={user} tenant={tenant} usage={usage} />;
         }

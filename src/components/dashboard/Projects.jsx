@@ -148,6 +148,19 @@ const handleViewProjectDetails = async (projectId) => {
     }
     return "";
 };
+const validateYear = (dateString) => {
+    if (!dateString) return "";
+    
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const currentYear = new Date().getFullYear();
+    
+    if (year < 2000 || year > currentYear + 5) {
+        return `Year must be between 2000 and ${currentYear + 5}`;
+    }
+    
+    return "";
+};
 
     const handleCreateProject = async (e) => {
         const dateError = validateDates(projectForm.startDate, projectForm.endDate);
@@ -163,6 +176,29 @@ if (dateError) {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
+      // Validate dates
+    // const dateError = validateDates(projectForm.startDate, projectForm.endDate);
+    if (dateError) {
+        setFormErrors({ ...formErrors, date: dateError });
+        setIsSubmitting(false);
+        toast.error(dateError);
+        return;
+    }
+    
+    // Validate years
+    const startYearError = validateYear(projectForm.startDate);
+    const endYearError = validateYear(projectForm.endDate);
+    
+    if (startYearError || endYearError) {
+        setFormErrors({ 
+            ...formErrors, 
+            startYear: startYearError,
+            endYear: endYearError 
+        });
+        setIsSubmitting(false);
+        toast.error(startYearError || endYearError);
+        return;
+    }
     
     try {
         const response = await ApiService.createProject(projectForm);
@@ -407,22 +443,30 @@ if (dateError) {
                                         <input
                                             type="date"
                                             className={formErrors.date ? 'error' : ''}
-                                            min={new Date().toISOString().split('T')[0]}
-                                            max={projectForm.endDate || ''}
+                                            min="2000-01-01"
+                                             max={new Date().getFullYear() + 5 + "-12-31"}
                                             value={projectForm.startDate}
-                                            onChange={(e) => setProjectForm({...projectForm, startDate: e.target.value})}
+                                            onChange={(e) => {
+                                               setFormErrors({...formErrors, date: '', startYear: ''});
+            setProjectForm({...projectForm, startDate: e.target.value})
+                                            }}
+                                             onKeyDown={(e) => e.preventDefault()}
                                         />
                                     </div>
                                     <div className="form-group">
                                         <label>End Date</label>
                                         <input
-                                        min={projectForm.startDate || new Date().toISOString().split('T')[0]}
+                                        min={projectForm.startDate || "2000-01-01"}
+                                         max={new Date().getFullYear() + 5 + "-12-31"}
                                         className={formErrors.date ? 'error' : ''}
                                             type="date"
+                                             onKeyDown={(e) => e.preventDefault()}
                                             value={projectForm.endDate}
                                             onChange={(e) => {
-                                                setFormErrors({...formErrors, date: ''})
-                                                setProjectForm({...projectForm, endDate: e.target.value})}
+            setFormErrors({...formErrors, date: '', endYear: ''});
+            setProjectForm({...projectForm, endDate: e.target.value});
+            
+        }
                                                 
                                             }
                                         />

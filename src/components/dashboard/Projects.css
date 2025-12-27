@@ -276,12 +276,16 @@
   width: calc(100% - 40px);
   width: 100%;
   max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 95vh;
+   height: 95vh;
+  /* overflow-y: auto; */
+  overflow: hidden;
    overflow-x: hidden; 
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: modalSlideIn 0.3s ease;
     box-sizing: border-box; 
+    display: flex; /* Added */
+    flex-direction: column; /* Added */
 }
 .modal::-webkit-scrollbar {
     width: 6px;
@@ -348,9 +352,10 @@
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px;
    overflow-wrap: break-word;
     word-wrap: break-word; 
+    overflow-y: auto;
 
 }
 
@@ -364,7 +369,7 @@
 
 /* Form styles */
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
@@ -410,8 +415,8 @@
 
 .form-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 12px;
   width: 100%;
 }
 .form-row .form-group input,
@@ -936,3 +941,461 @@
 .modal.large {
     max-width: 700px !important;
 }
+
+/* ==============================================
+   FIX DARK MODE INPUT STYLING - ADD THESE RULES
+   ============================================== */
+
+/* Force light background and dark text on all form inputs */
+.search-input,
+.filter-select,
+.form-group input,
+.form-group select,
+.form-group textarea,
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="tel"],
+input[type="date"],
+input[type="password"],
+textarea,
+select {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Hover and focus states */
+.search-input:hover,
+.filter-select:hover,
+.form-group input:hover,
+.form-group select:hover,
+.form-group textarea:hover,
+input[type="text"]:hover,
+input[type="email"]:hover,
+input[type="number"]:hover,
+input[type="tel"]:hover,
+input[type="date"]:hover,
+input[type="password"]:hover,
+textarea:hover,
+select:hover {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: #3b82f6 !important;
+}
+
+/* Focus states */
+.search-input:focus,
+.filter-select:focus,
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="tel"]:focus,
+input[type="date"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+    outline: none !important;
+}
+
+/* Disabled state */
+.search-input:disabled,
+.filter-select:disabled,
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled,
+input[type="text"]:disabled,
+input[type="email"]:disabled,
+input[type="number"]:disabled,
+input[type="tel"]:disabled,
+input[type="date"]:disabled,
+input[type="password"]:disabled,
+textarea:disabled,
+select:disabled {
+    background-color: #f9fafb !important;
+    color: #9ca3af !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Placeholder text color */
+.search-input::placeholder,
+.filter-select::placeholder,
+.form-group input::placeholder,
+.form-group textarea::placeholder,
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="number"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="date"]::placeholder,
+input[type="password"]::placeholder,
+textarea::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+}
+
+/* Date picker icon color */
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0) !important;
+    opacity: 1 !important;
+}
+
+/* Number input spinner color */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    background-color: #ffffff !important;
+}
+
+/* Select dropdown arrow */
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%231f2937'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 16px !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    padding-right: 40px !important;
+}
+
+/* Modal specific inputs to ensure they stay light */
+.modal input,
+.modal select,
+.modal textarea {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+}
+
+/* For error state inputs in dark mode */
+.error {
+    background-color: #fef2f2 !important;
+    color: #1f2937 !important;
+    border-color: #ef4444 !important;
+}
+
+/* For the confirm toast inputs */
+.confirm-toast input,
+.confirm-toast select,
+.confirm-toast textarea {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+}
+/* ====================================
+   FORCE LIGHT MODE EVERYWHERE
+   ==================================== */
+
+/* Force all inputs to stay light */
+input, textarea, select {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Force all scrollbars to stay light */
+* {
+    scrollbar-color: #d1d5db #f3f4f6 !important;
+}
+
+/* Webkit scrollbars */
+::-webkit-scrollbar {
+    background-color: #f3f4f6 !important;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #f3f4f6 !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #d1d5db !important;
+}
+
+/* Disable dark mode inheritance */
+html, body {
+    color-scheme: light !important;
+}
+
+
+/* ==============================================
+   REDUCE MODAL SCROLLBAR & MAKE TALLER
+   ============================================== */
+
+/* Make ALL modals taller to minimize scrolling */
+.modal {
+    max-height: 95vh !important; /* Increased from 90vh */
+    height: 95vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Specific for large modal (project details) */
+.modal.large {
+    max-width: 750px !important; /* Slightly wider */
+    max-height: 98vh !important; /* Even taller */
+    height: 98vh !important;
+}
+
+/* Make modal body take available space with minimal padding */
+.modal-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    padding: 20px !important; /* Already has this */
+    max-height: calc(95vh - 120px) !important; /* Accounts for header/footer */
+}
+
+/* For large modal, adjust body height */
+.modal.large .modal-body {
+    max-height: calc(98vh - 120px) !important;
+}
+
+/* Make scrollbar thinner for all modals */
+.modal-body::-webkit-scrollbar {
+    width: 4px !important; /* Reduced from 8px */
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9 !important;
+    border-radius: 2px !important;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1 !important;
+    border-radius: 2px !important;
+    border: 1px solid #f1f5f9 !important;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8 !important;
+}
+
+/* Firefox scrollbar */
+.modal-body {
+    scrollbar-width: thin !important;
+    scrollbar-color: #cbd5e1 #f1f5f9 !important;
+}
+
+/* ==============================================
+   COMPACT PROJECT DETAILS MODAL CONTENT
+   ============================================== */
+
+/* Make project details content more compact */
+.project-details-content {
+    padding: 0 !important;
+}
+
+.project-details-header {
+    margin-bottom: 15px !important; /* Reduced from 25px */
+    padding-bottom: 10px !important; /* Reduced from 15px */
+}
+
+/* Reduce grid gaps */
+.project-details-grid {
+    gap: 15px !important; /* Reduced from 25px */
+    margin-bottom: 15px !important; /* Reduced from 25px */
+}
+
+/* Make sections more compact */
+.details-section {
+    padding: 15px !important; /* Reduced from 20px */
+    margin-bottom: 0 !important;
+}
+
+.details-section h4 {
+    margin: 0 0 10px 0 !important; /* Reduced from 15px */
+    font-size: 15px !important;
+}
+
+.details-row {
+    padding: 5px 0 !important; /* Reduced from 8px 0 */
+    min-height: 28px !important; /* Ensure consistent row height */
+}
+
+/* Compact stats grid */
+.stats-grid {
+    gap: 10px !important; /* Reduced from 15px */
+}
+
+.stat-item {
+    padding: 10px !important; /* Reduced from 15px */
+}
+
+.stat-label {
+    font-size: 11px !important; /* Smaller */
+    margin-bottom: 3px !important; /* Reduced from 5px */
+}
+
+.stat-value {
+    font-size: 18px !important; /* Reduced from 20px */
+}
+
+/* Compact team members */
+.team-members-list {
+    gap: 8px !important; /* Reduced from 10px */
+}
+
+.team-member {
+    padding: 8px !important; /* Reduced from 10px */
+    gap: 10px !important; /* Reduced from 12px */
+}
+
+.member-avatar {
+    width: 32px !important; /* Reduced from 36px */
+    height: 32px !important;
+    font-size: 13px !important;
+}
+
+/* ==============================================
+   REDUCE CREATE MODAL FORM SPACING
+   ============================================== */
+
+/* Make form in create modal more compact */
+.modal-body .form-group {
+    margin-bottom: 8px !important; /* Reduced from 12px */
+}
+
+.modal-body .form-group label {
+    margin-bottom: 4px !important; /* Reduced from 6px */
+    font-size: 13px !important;
+}
+
+.modal-body .form-row {
+    margin-bottom: 8px !important; /* Reduced from 12px */
+    gap: 8px !important; /* Reduced from 12px */
+}
+
+/* Compact form inputs */
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="date"],
+.form-group input[type="tel"],
+.form-group input[type="color"],
+.form-group textarea,
+.form-group select {
+    padding: 8px 10px !important; /* Reduced from 10px 12px */
+    font-size: 13px !important;
+    min-height: 36px !important; /* Consistent height */
+}
+
+.form-group textarea {
+    min-height: 70px !important; /* Reduced from 80px */
+}
+
+/* Compact color input */
+.form-group input[type="color"] {
+    height: 36px !important; /* Reduced from 40px */
+    padding: 2px !important; /* Reduced from 4px */
+}
+
+/* ==============================================
+   UTILITY CLASSES FOR COMPACT DISPLAY
+   ============================================== */
+
+/* Add these utility classes for even more control */
+.compact-text {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+}
+
+.compact-row {
+    margin-bottom: 5px !important;
+    padding: 4px 0 !important;
+}
+
+.compact-section {
+    padding: 10px !important;
+    margin-bottom: 10px !important;
+}
+
+/* ==============================================
+   HIDE SCROLLBAR WHEN NOT NEEDED
+   ============================================== */
+
+/* Auto-hide scrollbar when not scrolling */
+.modal-body {
+    overflow-y: overlay !important; /* Better scrollbar handling */
+}
+
+.modal-body::-webkit-scrollbar {
+    opacity: 0.5;
+    transition: opacity 0.3s;
+}
+
+.modal-body:hover::-webkit-scrollbar {
+    opacity: 1;
+}
+
+/* Hide scrollbar when content fits */
+.modal-body:not(.has-scroll)::-webkit-scrollbar {
+    display: none;
+}
+
+/* ==============================================
+   RESPONSIVE ADJUSTMENTS FOR MODALS
+   ============================================== */
+
+@media (max-width: 768px) {
+    /* Make modals almost full screen on mobile */
+    .modal {
+        max-height: 98vh !important;
+        height: 98vh !important;
+        max-width: 98vw !important;
+        width: 98vw !important;
+    }
+    
+    .modal.large {
+        max-height: 98vh !important;
+        height: 98vh !important;
+    }
+    
+    .modal-body {
+        max-height: calc(98vh - 120px) !important;
+        padding: 15px !important;
+    }
+    
+    /* Even more compact on mobile */
+    .project-details-grid {
+        gap: 10px !important;
+    }
+    
+    .details-section {
+        padding: 12px !important;
+    }
+    
+    .details-row {
+        padding: 4px 0 !important;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-body {
+        padding: 12px !important;
+    }
+    
+    .details-section {
+        padding: 10px !important;
+    }
+    
+    .team-members-list {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* SIMPLE FIX FOR SCROLLBAR */
+.modal { max-height: 95vh !important; height: 95vh !important; }
+.modal.large { max-height: 98vh !important; height: 98vh !important; }
+.modal-body { max-height: calc(95vh - 120px) !important; }
+.modal.large .modal-body { max-height: calc(98vh - 120px) !important; }
+.modal-body::-webkit-scrollbar { width: 4px !important; }
+.project-details-grid { gap: 15px !important; }
+.details-section { padding: 15px !important; }
+.details-row { padding: 5px 0 !important; }

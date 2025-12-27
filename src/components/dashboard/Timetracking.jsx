@@ -13,7 +13,7 @@ const TimeTracking = ({ user, tenant }) => {
     const [tasks, setTasks] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const manualEntryModalRef = useRef(null);
-    const [successMessage , setSuccessMessage] = ('')
+    const [successMessage , setSuccessMessage] = useState('')
     const [formErrors, setFormErrors] = useState({
     startTime: '',
     endTime: ''
@@ -483,6 +483,7 @@ return
                                              className={formErrors.startTime ? 'error' : ''}
                                               max={new Date().toISOString().slice(0, 16)}
                                             value={manualEntry.startTime}
+                                            onKeyDown={(e) => e.preventDefault()}
                                             onChange={(e) => {
     setManualEntry({...manualEntry, startTime: e.target.value});
     if (formErrors.startTime) {
@@ -500,6 +501,7 @@ return
                                         <label>End Time *</label>
                                         <input
                                             type="datetime-local"
+                                            onKeyDown={(e) => e.preventDefault()}
                                              className={formErrors.endTime ? 'error' : ''}
                                              min={manualEntry.startTime || new Date().toISOString().slice(0, 16)}
                                               max={new Date().toISOString().slice(0, 16)}

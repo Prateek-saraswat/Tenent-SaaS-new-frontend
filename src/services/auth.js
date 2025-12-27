@@ -18,6 +18,10 @@ class ApiService {
         }
     }
 
+    static async downgrade(planId = 'free') {
+  return this.apiCall('/billing/downgrade', 'POST', { planId });
+}
+
     static async refreshToken() {
         const refreshToken = localStorage.getItem('refreshToken');
         if (!refreshToken) return null;

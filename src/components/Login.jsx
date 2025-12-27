@@ -12,6 +12,7 @@ const Login = () => {
     });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     
     const { login, error: authError, clearError, isAuthenticated } = useAuth();
     const navigate = useNavigate();
@@ -144,17 +145,34 @@ const Login = () => {
                         <label htmlFor="password" className="form-label">
                             Password
                         </label>
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            className={`form-control ${errors.password ? 'error' : ''}`}
-                            placeholder="••••••••"
-                            disabled={isSubmitting}
-                            autoComplete="current-password"
-                        />
+                        {/* 🔹 PASSWORD + EYE WRAPPER */}
+<div className="password-wrapper">
+
+  {/* 🔹 type changed */}
+  <input
+    type={showPassword ? 'text' : 'password'} // 👈 CHANGE
+    id="password"
+    name="password"
+    value={formData.password}
+    onChange={handleChange}
+    className={`form-control ${errors.password ? 'error' : ''}`}
+    placeholder="••••••••"
+    disabled={isSubmitting}
+    autoComplete="current-password"
+  />
+
+  {/* 🔹 EYE TOGGLE BUTTON */}
+  <button
+    type="button" // 👈 IMPORTANT
+    className="password-toggle"
+    onClick={() => setShowPassword(prev => !prev)} // 👈 TOGGLE
+    tabIndex={-1}
+  >
+    {showPassword ? '🙈' : '👁️'}
+  </button>
+
+</div>
+
                         {errors.password && (
                             <div className="error-message">{errors.password}</div>
                         )}

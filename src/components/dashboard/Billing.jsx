@@ -3,7 +3,7 @@ import ApiService from '../../services/auth.js';
 import toast from 'react-hot-toast';
 import './Billing.css';
 
-const Billing = ({ user, tenant, usage }) => {
+const Billing = ({ user, tenant, usage ,refreshTenant }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [loading, setLoading] = useState(false);
     const [plans, setPlans] = useState([]);
@@ -16,35 +16,37 @@ const Billing = ({ user, tenant, usage }) => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [upgradingPlanId, setUpgradingPlanId] = useState(null);
+    const [isPlanChanging, setIsPlanChanging] = useState(false);
 
      const resetDeleteModal = () => {
     setShowDeleteConfirm(false);
     setDeleteConfirmation('');
 };
 
-useEffect(() => {
-    const fetchCurrentTenant = async () => {
-        try {
-            const tenantData = await ApiService.getCurrentTenant();
-            // Update current plan based on the fetched tenant data
-            if (tenantData && plans.length > 0) {
-                const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
-                if (currentPlanFromApi) {
-                    setCurrentPlan(currentPlanFromApi);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch current tenant:', error);
-        }
-    };
+// useEffect(() => {
+//     const fetchCurrentTenant = async () => {
+//         try {
+//             const tenantData = await ApiService.getCurrentTenant();
+//             // Update current plan based on the fetched tenant data
+//             if (tenantData && plans.length > 0) {
+//                 const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
+//                 if (currentPlanFromApi) {
+//                     setCurrentPlan(currentPlanFromApi);
+//                 }
+//             }
+//         } catch (error) {
+//             console.error('Failed to fetch current tenant:', error);
+//         }
+//     };
     
-    if (showUpgradeModal || plans.length > 0) {
-        fetchCurrentTenant();
-    }
-}, [plans, showUpgradeModal]);
+//     if (showUpgradeModal || plans.length > 0) {
+//         fetchCurrentTenant();
+//     }
+// }, [plans, showUpgradeModal]);
 
 
 useEffect(() => {
+    if (isPlanChanging) return;
     if (tenant?.plan && plans.length > 0) {
         const planFromTenant = plans.find(p => p.id === tenant.plan);
         if (planFromTenant && planFromTenant.id !== currentPlan?.id) {
@@ -98,7 +100,7 @@ const handleCloseUpgradeModal = () => {
             setPlans(plansData);
             
             // Update current plan from API
-            await updateCurrentPlanFromApi();
+            // await updateCurrentPlanFromApi();
         }
 
         // Load invoices
@@ -115,45 +117,39 @@ const handleCloseUpgradeModal = () => {
     }
 };
 const handleUpgradePlan = async (planId) => {
+    // 🔥 STEP 1: UI IMMEDIATELY UPDATE
+    setIsPlanChanging(true);
+    setCurrentPlan(selectedPlan);
+    setShowUpgradeModal(false);
+    resetUpgradeModal();
+
     setUpgradingPlanId(planId);
     setLoading(true);
+
     try {
         toast.loading('Upgrading your plan...');
+
         const response = await ApiService.subscribe(planId, billingCycle);
-        
-        if (response && response.success) {
-            // Immediately update UI optimistically
-            setCurrentPlan(selectedPlan);
-            
-            // Fetch updated tenant data from API
-            const updatedTenantData = await ApiService.getCurrentTenant();
-            if (updatedTenantData && plans.length > 0) {
-                const updatedPlan = plans.find(p => p.id === updatedTenantData.plan);
-                setCurrentPlan(updatedPlan || selectedPlan);
-            }
-            
-            toast.success('✅ Plan upgraded successfully!', { duration: 4000 });
-            handleCloseUpgradeModal();
-            
-            // Reload all billing data to ensure consistency
-            setTimeout(() => {
-                loadBillingData();
-            }, 500);
+
+        if (response?.success) {
+            await refreshTenant();
+            toast.success('🎉 Plan upgraded successfully!', { duration: 3000 });
+
+            // 🔄 Background refresh (optional but safe)
+            loadBillingData();
         }
     } catch (error) {
-        console.error('Failed to upgrade plan:', error);
-        toast.error(error.message || 'Failed to upgrade plan. Please try again.');
-        // Revert optimistic update on error
-        const tenantData = await ApiService.getCurrentTenant();
-        if (tenantData && plans.length > 0) {
-            const currentPlanFromApi = plans.find(p => p.id === tenantData.plan);
-            setCurrentPlan(currentPlanFromApi);
-        }
+        toast.error(error.message || 'Upgrade failed');
+
+        // ❗ Rollback (optional)
+        loadBillingData();
     } finally {
         setLoading(false);
         setUpgradingPlanId(null);
+          setIsPlanChanging(false);
     }
 };
+
 const updateCurrentPlanFromApi = async () => {
     try {
         const tenantData = await ApiService.getCurrentTenant();
@@ -169,13 +165,13 @@ const updateCurrentPlanFromApi = async () => {
     }
     return false; // Plan was not updated
 };
+const handleDowngradePlan = async (planId) => {
+    const freePlan = plans.find(p => p.id === 'free');
 
-    const handleDowngradePlan = async (planId) => {
     const userConfirmed = await new Promise((resolve) => {
-        // Show custom confirmation toast
         toast.custom((t) => (
             <div className="confirm-toast">
-                <p>Are you sure you want to downgrade to the {planId} plan?</p>
+                <p>Are you sure you want to downgrade to the Free plan?</p>
                 <div className="confirm-buttons">
                     <button onClick={() => { resolve(true); toast.dismiss(t.id); }}>
                         Yes, Downgrade
@@ -190,22 +186,34 @@ const updateCurrentPlanFromApi = async () => {
 
     if (!userConfirmed) return;
 
+    // ✅ UI update immediately
+    if (freePlan) {
+        setIsPlanChanging(true);
+        setCurrentPlan(freePlan);
+    }
+
     setLoading(true);
+
     try {
         toast.loading('Processing downgrade...');
-        // This would require a POST /billing/downgrade endpoint
-        // Simulating API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        toast.success('✅ Plan downgraded successfully!');
-        loadBillingData(); // Reload to get updated plan
+
+        // ✅ REAL backend call (THIS IS THE FIX)
+        await ApiService.downgrade('free');
+        await refreshTenant();
+
+        toast.success('✅ Downgraded to Free plan');
+
+        loadBillingData();
     } catch (error) {
-        console.error('Failed to downgrade plan:', error);
-        toast.error('Failed to downgrade plan. Please try again.');
+        toast.error('Downgrade failed');
+        loadBillingData();
     } finally {
         setLoading(false);
+        setIsPlanChanging(false);
     }
 };
+
+
 
     const handleDownloadInvoice = async (invoiceId) => {
         try {
@@ -698,18 +706,22 @@ const updateCurrentPlanFromApi = async () => {
             {/* Upgrade Plan Modal */}
             {showUpgradeModal && selectedPlan && (
                 <div className="modal-overlay"  onClick={(e) => {
-            // Check if click is on the overlay itself (not the modal content)
-            if (e.target.className === 'modal-overlay' && !loading) {
-                setShowUpgradeModal(false);
-                toast.dismiss();
-            }
-        }}>
+        // Only close if clicking directly on the overlay (not modal content)
+        if (e.target === e.currentTarget && !loading) {
+            handleCloseUpgradeModal();
+        }
+    }}>
                     <div className="modal"  ref={modalRef} onClick={(e) => e.stopPropagation()} >
                         <div className="modal-header">
                             <h3>Upgrade to {selectedPlan.name}</h3>
                             <button 
+                              disabled={loading}
                                 className="close-btn"
-                                onClick={handleCloseUpgradeModal} 
+                                onClick={() => {
+        handleCloseUpgradeModal();
+        setShowUpgradeModal(false);
+        
+    }}
                             >
                                 ×
                             </button>

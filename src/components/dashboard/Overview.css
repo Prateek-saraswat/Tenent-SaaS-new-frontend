@@ -595,3 +595,38 @@
     color: white !important;
     font-weight: 600;
 }
+
+
+/* ====================================
+   FORCE LIGHT MODE EVERYWHERE
+   ==================================== */
+
+/* Force all inputs to stay light */
+input, textarea, select {
+    background-color: #ffffff !important;
+    color: #1f2937 !important;
+    border-color: #d1d5db !important;
+}
+
+/* Force all scrollbars to stay light */
+* {
+    scrollbar-color: #d1d5db #f3f4f6 !important;
+}
+
+/* Webkit scrollbars */
+::-webkit-scrollbar {
+    background-color: #f3f4f6 !important;
+}
+
+::-webkit-scrollbar-track {
+    background-color: #f3f4f6 !important;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: #d1d5db !important;
+}
+
+/* Disable dark mode inheritance */
+html, body {
+    color-scheme: light !important;
+}

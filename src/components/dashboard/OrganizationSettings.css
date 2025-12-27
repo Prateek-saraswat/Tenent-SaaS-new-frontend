@@ -523,6 +523,7 @@
     z-index: 1000;
     padding: 20px;
     animation: fadeInOverlay 0.3s ease;
+    
 }
 
 @keyframes fadeInOverlay {

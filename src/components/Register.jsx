@@ -15,7 +15,8 @@ const Register = () => {
         agreeTerms: false,
         subscribe: true
     });
-    
+    const [showPassword, setShowPassword] = useState(false);
+const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [errors, setErrors] = useState({});
     const [passwordStrength, setPasswordStrength] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +61,8 @@ const Register = () => {
         setPasswordStrength(strength);
     }, [formData.password]);
 
+
+    
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
@@ -302,16 +305,33 @@ const Register = () => {
                             <label htmlFor="password" className="form-label">
                                 Password *
                             </label>
-                            <input
-                                type="password"
-                                id="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleChange}
-                                className={`form-control ${errors.password ? 'error' : ''}`}
-                                placeholder="••••••••"
-                                disabled={isSubmitting}
-                            />
+                           {/* 🔹 WRAPPER ADDED */}
+<div className="password-wrapper">
+
+  {/* 🔹 type changed */}
+  <input
+    type={showPassword ? 'text' : 'password'} // 👈 CHANGE
+    id="password"
+    name="password"
+    value={formData.password}
+    onChange={handleChange}
+    className={`form-control ${errors.password ? 'error' : ''}`}
+    placeholder="••••••••"
+    disabled={isSubmitting}
+  />
+
+  {/* 🔹 EYE BUTTON ADDED */}
+  <button
+    type="button" // 👈 IMPORTANT (no form submit)
+    className="password-toggle"
+    onClick={() => setShowPassword(prev => !prev)} // 👈 TOGGLE
+    tabIndex={-1}
+  >
+    {showPassword ? '🙈' : '👁️'}
+  </button>
+
+</div>
+
                             {formData.password && (
                                 <div className="password-strength">
                                     <div className="strength-meter">
@@ -347,16 +367,33 @@ const Register = () => {
                             <label htmlFor="confirmPassword" className="form-label">
                                 Confirm Password *
                             </label>
-                            <input
-                                type="password"
-                                id="confirmPassword"
-                                name="confirmPassword"
-                                value={formData.confirmPassword}
-                                onChange={handleChange}
-                                className={`form-control ${errors.confirmPassword ? 'error' : ''}`}
-                                placeholder="••••••••"
-                                disabled={isSubmitting}
-                            />
+                            {/* 🔹 WRAPPER ADDED */}
+<div className="password-wrapper">
+
+  {/* 🔹 type changed */}
+  <input
+    type={showConfirmPassword ? 'text' : 'password'} // 👈 CHANGE
+    id="confirmPassword"
+    name="confirmPassword"
+    value={formData.confirmPassword}
+    onChange={handleChange}
+    className={`form-control ${errors.confirmPassword ? 'error' : ''}`}
+    placeholder="••••••••"
+    disabled={isSubmitting}
+  />
+
+  {/* 🔹 EYE BUTTON ADDED */}
+  <button
+    type="button"
+    className="password-toggle"
+    onClick={() => setShowConfirmPassword(prev => !prev)} // 👈 TOGGLE
+    tabIndex={-1}
+  >
+    {showConfirmPassword ? '🙈' : '👁️'}
+  </button>
+
+</div>
+
                             {errors.confirmPassword && (
                                 <div className="error-message">{errors.confirmPassword}</div>
                             )}
